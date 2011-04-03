@@ -1,0 +1,15 @@
+[hmeserver]
+apps=vidmgr
+
+[tivos]
+tivo1.name=Family Room
+tivo1.tsn=TSN1
+tivo2.name=Master Bedroom
+tivo2.tsn=TSN2
+
+
+[pytivos]
+pytivo1.config=C:\tmp\pyTivo.conf
+pytivo1.ip=192.168.1.201
+pytivo1.port=9032
+pytivo1.sep=/
