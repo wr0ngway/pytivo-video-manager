@@ -22,6 +22,7 @@ MENU_PUSH = 0
 MENU_DELETE = 1
 MENU_CONFIRM = 3
 
+p = os.path.dirname(__file__)
 if os.path.sep == '/':
 	quote = urllib.quote
 	unquote = urllib.unquote_plus
@@ -55,14 +56,14 @@ def nextVideo(list, index):
 
 class Images:
 	def __init__(self, app):
-		self.Background = Image(app, 'vidmgr/background.png')
-		self.CueUp      = Image(app, 'vidmgr/cueup.png')
-		self.CueDown    = Image(app, 'vidmgr/cuedown.png')
-		self.CueLeft    = Image(app, 'vidmgr/cueleft.png')
-		self.HiLite     = Image(app, 'vidmgr/hilite.png')
-		self.MenuBkg    = Image(app, 'vidmgr/menubkg.png')
-		self.IconFolder = Image(app, 'vidmgr/folder.png')
-		self.IconVideo  = Image(app, 'vidmgr/video.png')
+		self.Background = Image(app, os.path.join(p, 'background.png'))
+		self.CueUp      = Image(app, os.path.join(p, 'cueup.png'))
+		self.CueDown    = Image(app, os.path.join(p, 'cuedown.png'))
+		self.CueLeft    = Image(app, os.path.join(p, 'cueleft.png'))
+		self.HiLite     = Image(app, os.path.join(p, 'hilite.png'))
+		self.MenuBkg    = Image(app, os.path.join(p, 'menubkg.png'))
+		self.IconFolder = Image(app, os.path.join(p, 'folder.png'))
+		self.IconVideo  = Image(app, os.path.join(p, 'video.png'))
 
 class Fonts:
 	def __init__(self, app):
