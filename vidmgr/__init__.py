@@ -7,6 +7,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
+version = '0.2'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -17,10 +18,40 @@ MODE_MENU = 0
 MODE_TIVOMENU = 1
 MODE_DELCONFIRM = 2
 MODE_PUSHCONFIRM = 3
+MODE_INFO = 4
 
 MENU_PUSH = 0
 MENU_DELETE = 1
 MENU_CONFIRM = 3
+
+RES_SD = 0
+RES_HD = 1
+
+screenWidth = [ 640, 1280 ]
+screenHeight = [ 480, 720 ]
+listViewWidth = [ 640, 640 ]
+listSize = [ 8, 12 ]
+titleYPos = [ 24, 36 ]
+subTitleYPos = [ 56, 84 ]
+listYStart = [ 81, 121 ]
+listHeight = [ 40, 40 ]
+listXText = [ 100, 150 ]
+listXIcon = [ 60, 90 ]
+listXCue = [ 20, 30 ]
+subMenuSize = [ 4, 4 ]
+detailViewWidth = [ 640, 640 ]
+detailDescHeight = [ 120, 130 ]
+detailDescWidth = [ 540, 590 ]
+detailDescXPos = [ 60, 10 ]
+detailDescYPos = [ 146, 121 ]
+detailViewXPos = [ 0, 640 ]
+detailMenuYPos = [ 270, 250 ]
+detailMenuXPos = [ 70, 340 ]
+detailSubMenuYPos = [ 270, 442 ]
+detailSubMenuXPos = [ 330, 340 ]
+detailSubCueTopY = [ 238, 410 ]
+detailSubCueBotY = [ 403, 575 ]
+detailSubCueXPos = [ 350, 300 ]
 
 p = os.path.dirname(__file__)
 if os.path.sep == '/':
@@ -30,40 +61,20 @@ else:
 	quote = lambda x: urllib.quote(x.replace(os.path.sep, '/'))
 	unquote = lambda x: os.path.normpath(urllib.unquote_plus(x))
 	
-def prevVideo(list, index):
-	ret = -1;
-	i = index - 1
-	
-	while (i >= 0 and ret == -1):
-		if list[i]['dir']:
-			i = i - 1
-		else:
-			ret = i
-
-	return ret
-
-def nextVideo(list, index):
-	ret = -1;
-	i = index + 1
-	
-	while (i < len(list) and ret == -1):
-		if list[i]['dir']:
-			i = i + 1
-		else:
-			ret = i
-
-	return ret
-
 class Images:
 	def __init__(self, app):
-		self.Background = Image(app, os.path.join(p, 'background.png'))
-		self.CueUp      = Image(app, os.path.join(p, 'cueup.png'))
-		self.CueDown    = Image(app, os.path.join(p, 'cuedown.png'))
-		self.CueLeft    = Image(app, os.path.join(p, 'cueleft.png'))
-		self.HiLite     = Image(app, os.path.join(p, 'hilite.png'))
-		self.MenuBkg    = Image(app, os.path.join(p, 'menubkg.png'))
-		self.IconFolder = Image(app, os.path.join(p, 'folder.png'))
-		self.IconVideo  = Image(app, os.path.join(p, 'video.png'))
+		suffix = ""
+		if (app.res == RES_HD):
+			suffix = "HD"
+			
+		self.Background = Image(app, os.path.join(p, 'background' + suffix + '.png'))
+		self.CueUp      = Image(app, os.path.join(p, 'cueup' + suffix + '.png'))
+		self.CueDown    = Image(app, os.path.join(p, 'cuedown' + suffix + '.png'))
+		self.CueLeft    = Image(app, os.path.join(p, 'cueleft' + suffix + '.png'))
+		self.HiLite     = Image(app, os.path.join(p, 'hilite' + suffix + '.png'))
+		self.MenuBkg    = Image(app, os.path.join(p, 'menubkg' + suffix + '.png'))
+		self.IconFolder = Image(app, os.path.join(p, 'folder' + suffix + '.png'))
+		self.IconVideo  = Image(app, os.path.join(p, 'video' + suffix + '.png'))
 
 class Fonts:
 	def __init__(self, app):
@@ -73,8 +84,28 @@ class Fonts:
 		self.fnt30 = Font(app, size=30)
 	
 class Vidmgr(Application):
+	def handle_resolution(self):
+		""" Choose the 'optimal' resolution. """
+		if (self.resolutions[0][0] == 640):
+			self.res = RES_SD
+		elif (self.resolutions[0][0] == 1280):
+			self.res = RES_HD
+		else:
+			self.active = False
+			self.snd('bonk')
+			
+		return self.resolutions[0]
+	
 	def startup(self):
+		global goodexts
+		
 		config = self.context.server.config
+		if config.has_section('vidmgr'):
+			for opt, value in config.items('vidmgr'):
+				if opt == 'exts':
+					goodexts = value.split()
+
+		self.res = RES_SD
 
 		# get the tivo information out of the startup comfig file.  For each tivo, we need to know:
 		# tivox.name - the user friendly name and
@@ -102,20 +133,21 @@ class Vidmgr(Application):
 			self.active = False
 			return
 		
+	def handle_active(self):
 		# initialize our image and font resources, put up the screen background	and the title
-		self.images = Images(self)
+		self.myimages = Images(self)
 		self.fonts = Fonts(self)
-		self.root.set_resource(self.images.Background)
-		self.TitleView = View(self, height=40, width=640)
-		self.SubTitleView= View(self, height=32, width=640, ypos=41)
-		self.TitleView.set_text(TITLE, font=self.fonts.fnt30, colornum=0xffffff)
+		self.root.set_resource(self.myimages.Background)
+		self.TitleView = View(self, height=30, width=screenWidth[self.res], ypos=titleYPos[self.res])
+		self.SubTitleView= View(self, height=20, width=screenWidth[self.res], ypos=subTitleYPos[self.res])
+		self.TitleView.set_text(TITLE, font=self.fonts.fnt30, colornum=0xffffff, flags=RSRC_VALIGN_BOTTOM)
 		
 		# attributes for shares screen
 		self.shareSelection = 0
 		self.shareOffset = 0
 		
 		# attributes for listing page
-		self.listSize = 8
+		self.listSize = listSize[self.res]
 		self.listOffset = 0
 		self.listSelection = 0
 		self.currentDir = ""
@@ -126,10 +158,10 @@ class Vidmgr(Application):
 		# attributes for the details page		
 		self.indexDetail = 0
 		self.detailMenuSelection = 0
-		self.detailMode = MODE_MENU
+		self.detailMode = MODE_INFO
 		self.subMenuSelection = 0
 		self.subMenuOffset = 0
-		self.subMenuSize = 4
+		self.subMenuSize = subMenuSize[self.res]
 		# now create the details page views
 		self.createDetailsViews()
 
@@ -142,150 +174,7 @@ class Vidmgr(Application):
 		else:
 			self.currentPage = PAGE_SHARES;
 			self.drawScreen();
-	
-	# create all the views for the listing screen and the shares screen
-	def createListingViews(self):
-		self.vwList = View(self)
-		self.vwListText = []
-		self.vwListBkg = []
-		self.vwListIcon = []
-		self.vwListCue = []
-		for i in range(self.listSize):
-			yval = 81 + (i*40)
-			bkg = View(self, height=40, ypos=yval, parent=self.vwList)
-			self.vwListBkg.append(bkg)
-			self.vwListText.append(View(self, height=40, width=480, ypos=0, xpos=100, parent=bkg))
-			self.vwListIcon.append(View(self, height=32, width=32, ypos=4, xpos=60, parent=bkg))
-			self.vwListCue.append(View(self, height=32, width=32, ypos=4, xpos=20, parent=bkg))
 			
-		self.vwListCueTop = View(self, height=32, width=32, ypos=45, xpos=20, parent=self.vwList)
-		self.vwListCueBot = View(self, height=32, width=32, ypos=401, xpos=20, parent=self.vwList)
-
-	# create the views for the details screen		
-	def createDetailsViews(self):
-		self.vwDetail = View(self, visible=False)
-		self.vwDetailTitle = View(self, height=40, ypos=81, xpos=60, parent=self.vwDetail)
-		self.vwDetailSubTitle = View(self, height=24, ypos=121, xpos=60, parent=self.vwDetail)
-		self.vwDetailDescription = View(self, height=120, width=540, ypos=146, xpos=60, parent=self.vwDetail)
-		self.vwDetailMenuBkg = []
-		self.vwDetailMenuText = []
-		self.vwDetailSubMenuBkg = []
-		self.vwDetailSubMenuText = []
-
-		minyval = 270
-
-		for i in range(self.subMenuSize):
-			yval = minyval + (i*32)
-			bkg = View(self, height=30, width=240, xpos=70, ypos=yval, parent=self.vwDetail)
-			txt = View(self, height=30, width=220, xpos=20, parent=bkg)
-			bkg.set_resource(self.images.MenuBkg)
-			self.vwDetailMenuBkg.append(bkg)
-			self.vwDetailMenuText.append(txt)
-			bkg = View(self, height=30, width=240, xpos=330, ypos=yval, parent=self.vwDetail)
-			txt = View(self, height=30, width=220, xpos=20, parent=bkg)
-			bkg.set_resource(self.images.MenuBkg)
-			self.vwDetailSubMenuBkg.append(bkg)
-			self.vwDetailSubMenuText.append(txt)
-			if i < len(self.tivo):
-				self.vwDetailSubMenuText[i].set_text(self.tivo[i]['name'], font=self.fonts.fnt20,
-										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
-
-		self.vwDetailSubMenuCueTop = View(self, height=32, width=32, ypos=minyval-32, xpos=350, parent=self.vwDetail)
-		self.vwDetailSubMenuCueBot = View(self, height=32, width=32, ypos=minyval+(self.subMenuSize*32)+5, xpos=350, parent=self.vwDetail)
-
-		self.vwDetailCueTop = View(self, height=32, width=32, ypos=45, xpos=520, parent=self.vwDetail)
-		self.vwDetailCueBot = View(self, height=32, width=32, ypos=401, xpos=520, parent=self.vwDetail)
-		
-		self.vwDetailMenuBkg[2].set_transparency(1) # unused for now
-		self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
-		self.vwDetailMenuText[MENU_PUSH].set_text('Push Video', font=self.fonts.fnt20,
-									colornum=0xffffff,
-									flags=RSRC_HALIGN_LEFT)
-		self.vwDetailMenuText[MENU_DELETE].set_text('Delete Video', font=self.fonts.fnt20,
-									colornum=0xffffff,
-									flags=RSRC_HALIGN_LEFT)
-
-	# load up tivo information from the config file
-	def loadTivos(self, cfg):
-		def cmptivo (left, right):
-			if (left['name'] == right['name']): return 0
-			if (left['name'] < right['name']): return -1
-			return 0
-		
-		tlist = []
-		section = 'tivos'
-		if cfg.has_section(section):
-			i = 0
-			while (True):
-				i = i + 1
-				namekey = 'tivo' + str(i) + '.name'
-				tsnkey = 'tivo' + str(i) +  '.tsn'
-				if cfg.has_option(section, namekey) and cfg.has_option(section, tsnkey):
-					tlist.append({'name' : cfg.get(section, namekey),
-									'tsn' : cfg.get(section, tsnkey)})
-				else:
-					break
-				
-		self.tivo = sorted(tlist, cmp=cmptivo)
-
-	# load up pytivo and shares information from config and from pytivo config(s)
-	def loadShares(self, cfg):
-		def cmpshare (left, right):
-			if (left['name'] == right['name']): return 0
-			if (left['name'] < right['name']): return -1
-			return 0
-		
-		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		s.connect(('4.2.2.1', 123))
-		defip = s.getsockname()[0]
-	
-		section = 'pytivos'
-		if cfg.has_section(section):
-			i = 0
-			while (True):
-				i = i + 1
-				key = "pytivo" + str(i) + ".config"
-				if not cfg.has_option(section, key): break
-				cfgfile = cfg.get(section, key)
-				
-				sep = None
-				sepkey = 'pytivo' + str(i) + '.sep'
-				if cfg.has_option(section, sepkey): sep = cfg.get(section, sepkey)
-				
-				ip = defip
-				key = "pytivo" + str(i) + ".ip"
-				if cfg.has_option(section, key):
-					ip = cfg.get(section, key)
-
-				port = None				
-				key = "pytivo" + str(i) + ".port"
-				if cfg.has_option(section, key):
-					port = cfg.get(section, key)
-				
-				self.parseCfgFile(cfgfile, ip, port, sep)
-		
-		self.share = sorted(self.share, cmp=cmpshare)
-
-	# parse a pytivo config looking for shares				
-	def parseCfgFile(self, cf, ip, defport, sep):
-		pyconfig = ConfigParser.ConfigParser()
-		configs_found = pyconfig.read(cf)
-		if not configs_found:
-			print "ERROR: pyTivo config file " + cf + " does not exist."
-			return
-
-		port = defport
-		if pyconfig.has_option('Server', 'port') : port = pyconfig.get('Server', 'port')
-		
-		if port == None:
-			print "Neither main config file nor pytivo config file " + cf + " has port number specified"
-		else:
-			for section in pyconfig.sections():
-				if (pyconfig.has_option(section, "type") and pyconfig.get(section, "type") == "video" and 
-					pyconfig.has_option(section, 'path')):
-					path = pyconfig.get(section, 'path')
-					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
-
 	# handle a single remote key press - branch based on what screen is currently up				
 	def handle_key_press(self, keynum, rawcode):
 		if self.currentPage == PAGE_LIST:
@@ -294,6 +183,7 @@ class Vidmgr(Application):
 			self.handle_key_pressDetail(keynum, rawcode)
 		else: # PAGE_SHARES
 			self.handle_key_pressShares(keynum, rawcode)
+			
 
 	# handle a keypress on the directory listing screen.  This screen needs to handle the situation
 	# where the directory is empty - in this case, only the left arrow if permissible		
@@ -305,22 +195,12 @@ class Vidmgr(Application):
 			# if I get herem either 1) there are directory entries in the listing list, or
 			# 2) the directory list is empty and the ket is KEY_LEFT
 			if keynum == KEY_DOWN:
-				if self.listSelection+self.listOffset < len(self.listing)-1:
-					if self.listSelection < self.listSize-1:
-						self.listSelection = self.listSelection + 1
-					else:
-						self.listOffset = self.listOffset + 1
-				else:
+				if not self.ListCursorForward():
 					snd = 'bonk'
 						
 			elif keynum == KEY_UP:
-				if self.listSelection == 0:
-					if self.listOffset == 0:
-						snd = 'bonk'
-					else:
-						self.listOffset = self.listOffset - 1
-				else:
-					self.listSelection = self.listSelection - 1
+				if not self.ListCursorBackward():
+					snd = 'bonk'
 					
 			elif keynum == KEY_CHANNELUP:
 				if self.listOffset == 0:
@@ -367,8 +247,9 @@ class Vidmgr(Application):
 					self.createListing()
 				else:
 					# bring up the details about the selected video
-					self.vwList.set_visible(False)
-					self.vwDetail.set_visible(True)
+					if self.res == RES_SD:
+						self.vwList.set_visible(False)
+						self.vwDetail.set_visible(True)
 					self.indexDetail = index
 					self.currentPage = PAGE_DETAIL
 					self.detailMode = MODE_MENU
@@ -387,6 +268,8 @@ class Vidmgr(Application):
 						snd = None
 					else:
 						self.currentPage = PAGE_SHARES
+						self.detailMode = MODE_INFO
+
 				else:
 					# pop back one directory level
 					s = self.directoryStack.pop()
@@ -465,6 +348,8 @@ class Vidmgr(Application):
 			self.listOffset = 0
 			self.createListing()
 			self.currentPage = PAGE_LIST
+			self.detailMode = MODE_INFO
+
 			
 		elif keynum in [ KEY_LEFT, KEY_CLEAR ]:
 			self.active = False
@@ -479,7 +364,8 @@ class Vidmgr(Application):
 	# handle a keypress while on the details screen.  This screen operates in one of 3 modes:
 	# MODE_DELCONFIRM - only a thunmbs up is allowed - everything else will exit this mode
 	# MODE_MENU - the user is choosing an action to perform from the left menu, or
-	# MODE_TIVOMENU - the user has chosen push and is now choosing a tivo to push to		
+	# MODE_TIVOMENU - the user has chosen push and is now choosing a tivo to push to	
+	# a fourth mode - MODE_INFO - is when the list view is actually in control	
 	def handle_key_pressDetail(self, keynum, rawcode):
 		snd = 'updown'	
 		if self.detailMode == MODE_DELCONFIRM:	
@@ -490,13 +376,16 @@ class Vidmgr(Application):
 				
 				self.detailMode = MODE_MENU
 				if (self.indexDetail >= len(self.listing)):
-					self.indexDetail = prevVideo(self.listing, self.indexDetail)
-					if (self.indexDetail == -1):
+					if self.ListCursorPrevVideo():
+						self.indexDetail = self.listOffset + self.listSelection	
+					else :
 						self.listOffset = 0
 						self.listSelection = 0
-						self.vwDetail.set_visible(False)
-						self.vwList.set_visible(True)
+						if self.res == RES_SD:
+							self.vwDetail.set_visible(False)
+							self.vwList.set_visible(True)
 						self.currentPage = PAGE_LIST
+						self.detailMode = MODE_INFO
 					
 			else:
 				# not a thumbs up - back to MODE_MENU
@@ -574,37 +463,29 @@ class Vidmgr(Application):
 		# the user is choosing between PUSH and DELETE
 		else: #MODE_MENU
 			if keynum == KEY_CHANNELUP:
-				i = prevVideo(self.listing, self.indexDetail)
-				if i == -1:
-					snd = 'bonk'
+				if self.ListCursorPrevVideo():
+					self.indexDetail = self.listOffset + self.listSelection	
 				else:
-					self.indexDetail = i
+					snd = 'bonk'
 			
 			elif keynum == KEY_CHANNELDOWN:
-				i = nextVideo(self.listing, self.indexDetail)
-				if i == -1:
-					snd = 'bonk'
+				if self.ListCursorNextVideo():
+					self.indexDetail = self.listOffset + self.listSelection	
 				else:
-					self.indexDetail = i
+					snd = 'bonk'
 					
 			elif keynum == KEY_LEFT:
-				# back to listing page - we need to do some crazy stuff here in case they 
-				# deleted videos and our cursor is now beyond the end of the list
-				self.vwDetail.set_visible(False)
-				self.vwList.set_visible(True)
+				if self.res == RES_SD:
+					self.vwDetail.set_visible(False)
+					self.vwList.set_visible(True)
 				self.currentPage = PAGE_LIST
-				if self.listOffset + self.listSelection >= len(self.listing):
-					self.listSelection = 0
-					if self.listOffset > len(self.listing):
-						self.listOffset = self.listOffset - self.listSize
-						if self.listOffset < 0:
-							self.listOffset = 0
+				self.detailMode = MODE_INFO
 				
 			elif keynum in [KEY_UP, KEY_DOWN]:
 				self.detailMenuSelection = 1 - self.detailMenuSelection
 					
 			elif keynum in [KEY_RIGHT, KEY_SELECT]:
-				# act on their choice - either go into MODE_DELCONFIR or MODE_TIVOMENU
+				# act on their choice - either go into MODE_DELCONFIRM or MODE_TIVOMENU
 				# if there is only 1 tivo, bypass the tivo menu and just push it
 				if self.detailMenuSelection == MENU_DELETE:
 					self.detailMode = MODE_DELCONFIRM
@@ -629,6 +510,440 @@ class Vidmgr(Application):
 		if snd: self.sound(snd)		
 		self.drawScreen()
 
+	# paint the screen - first determine which screen we are painting		
+	def drawScreen(self):
+		if self.currentPage == PAGE_LIST:
+			self.drawScreenList()
+			if self.res == RES_HD:
+				self.drawScreenDetail()
+				self.vwDetail.set_visible(True)
+		elif self.currentPage == PAGE_DETAIL:
+			if self.res == RES_HD:
+				self.drawScreenList()
+			self.drawScreenDetail()
+		else: # PAGE_SHARES
+			self.drawScreenShares()
+			if self.res == RES_HD:
+				self.vwDetail.set_visible(False)
+
+	# draw the listing screen - this is the main screen that the user will be interacting with - this
+	# allows browsing through the directories	
+	def drawScreenList(self):
+		off = self.listOffset
+		self.SubTitleView.set_text(self.share[self.shareSelection]['name'] + ":" + self.currentDir,
+								font=self.fonts.fnt20,
+								colornum=0xffffff, flags=RSRC_VALIGN_BOTTOM)
+		
+		# if there are no videos in this directory, just print a message to that effect and
+		# prompt for the left key
+		if (len(self.listing) == 0):
+			for i in range(self.listSize):
+				self.vwListBkg[i].clear_resource();
+				self.vwListCue[i].clear_resource();
+				self.vwListText[i].clear_resource()
+				self.vwListIcon[i].clear_resource()
+			self.vwListCueTop.clear_resource();
+			self.vwListCueBot.clear_resource();
+			self.vwListText[3].set_text('No videos in this folder - press LEFT to continue', font=self.fonts.fnt20,
+									colornum=0xffffff, flags=RSRC_HALIGN_LEFT);
+			self.vwListCue[3].set_resource(self.myimages.CueLeft)
+		
+		else:
+			self.vwListCueTop.clear_resource();
+			if self.listSelection == 0 and off != 0:
+				self.vwListCueTop.set_resource(self.myimages.CueUp)
+				
+			self.vwListCueBot.clear_resource();
+			if (self.listSelection == self.listSize-1) and (self.listSelection+self.listOffset < len(self.listing)-1):
+				self.vwListCueBot.set_resource(self.myimages.CueDown)
+			
+			for i in range(self.listSize):
+				self.vwListBkg[i].clear_resource()
+				self.vwListCue[i].clear_resource()
+				if (i+off < len(self.listing)):
+					if i == self.listSelection:
+						self.vwListBkg[i].set_resource(self.myimages.HiLite)
+						self.vwListCue[i].set_resource(self.myimages.CueLeft)
+					if i == self.listSelection-1:
+						self.vwListCue[i].set_resource(self.myimages.CueUp)
+					if i == self.listSelection+1:
+						self.vwListCue[i].set_resource(self.myimages.CueDown)
+					self.vwListText[i].set_text(self.listing[i+off]['text'], font=self.fonts.fnt24,
+										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
+					self.vwListIcon[i].set_resource(self.listing[i+off]['icon'])
+				else:
+					self.vwListText[i].clear_resource()
+					self.vwListIcon[i].clear_resource()
+					
+	# paint the shares screen - this is much like the listing screen above except that 1) it lists shares only, 
+	# and 2) we don't have to worry about it being empty because if it was empty we would have exited by now
+	def drawScreenShares(self):
+		self.SubTitleView.set_text("Shares", font=self.fonts.fnt20,
+									colornum=0xffffff)
+		
+		off = self.shareOffset
+		self.vwListCueTop.clear_resource();
+		if self.shareSelection == 0 and off != 0:
+			self.vwListCueTop.set_resource(self.myimages.CueUp)
+			
+		self.vwListCueBot.clear_resource();
+		if (self.shareSelection == self.listSize-1) and (self.shareSelection+off < len(self.share)-1):
+			self.vwListCueBot.set_resource(self.myimages.CueDown)		
+		
+		for i in range(self.listSize):
+			self.vwListBkg[i].clear_resource()
+			self.vwListCue[i].clear_resource()
+			self.vwListIcon[i].clear_resource()
+			sx = i + off
+			if (sx < len(self.share)):
+				if i == self.shareSelection:
+					self.vwListBkg[i].set_resource(self.myimages.HiLite)
+					self.vwListCue[i].set_resource(self.myimages.CueLeft)
+				if i == self.shareSelection-1:
+					self.vwListCue[i].set_resource(self.myimages.CueUp)
+				if i == self.shareSelection+1:
+					self.vwListCue[i].set_resource(self.myimages.CueDown)
+				self.vwListText[i].set_text(self.share[sx]['name'], font=self.fonts.fnt24,
+									colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
+			else:
+				self.vwListText[i].clear_resource()
+
+	# paint the detail screen
+	# this is the most detailed of all of the screens - in addition to the detail
+	# about the current video, it needs to paing the action menu and if in push mode, the
+	# submenu of tivos
+	def drawScreenDetail(self):	
+		self.indexDetail = self.listOffset + self.listSelection	
+	
+		if ((self.FirstVideo()) or
+					(self.detailMode in [ MODE_DELCONFIRM, MODE_PUSHCONFIRM, MODE_TIVOMENU, MODE_INFO ])):
+			self.vwDetailCueTop.clear_resource()
+		else:
+			self.vwDetailCueTop.set_resource(self.myimages.CueUp)
+			
+		if ((self.LastVideo()) or
+					(self.detailMode in [ MODE_DELCONFIRM, MODE_PUSHCONFIRM, MODE_TIVOMENU, MODE_INFO ])):
+			self.vwDetailCueBot.clear_resource()
+		else:
+			self.vwDetailCueBot.set_resource(self.myimages.CueDown)
+			
+		if len(self.listing) == 0 or self.listing[self.indexDetail]['dir']:
+			self.vwDetailTitle.set_text("")
+			self.vwDetailSubTitle.set_text("")
+			self.vwDetailDescription.set_text("")
+			if self.res == RES_HD:
+				self.vwDetailThumb.set_visible(False)
+		else:
+			meta = self.listing[self.indexDetail]['meta']
+				
+			if self.res == RES_SD:
+				self.SubTitleView.set_text("", font=self.fonts.fnt20, colornum=0xffffff)
+				self.vwDetailTitle.set_text(meta['title'], font=self.fonts.fnt30,
+										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
+				if 'episodeTitle' in meta:
+					self.vwDetailSubTitle.set_text(meta['episodeTitle'], font=self.fonts.fnt24,
+										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
+				else:
+					self.vwDetailSubTitle.set_text("")
+			else:
+				self.vwDetailTitle.set_text("")
+				self.vwDetailSubTitle.set_text("")
+				if self.listing[self.indexDetail]['thumb']:
+					self.vwDetailThumb.set_visible(True)
+					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP)
+				else:
+					self.vwDetailThumb.set_visible(False)
+					
+			if 'description' in meta:
+				self.vwDetailDescription.set_text(meta['description'], font=self.fonts.fnt16,
+									colornum=0x000000,
+									flags=RSRC_TEXT_WRAP + RSRC_HALIGN_LEFT + RSRC_VALIGN_TOP)
+			else:
+				self.vwDetailDescription.set_text("")
+
+		self.vwDetailSubMenuCueTop.clear_resource()
+		self.vwDetailSubMenuCueBot.clear_resource()
+		
+		if self.detailMode == MODE_MENU:			
+			for i in range(self.subMenuSize):
+				self.vwDetailSubMenuBkg[i].set_transparency(1) 
+			if self.detailMenuSelection == MENU_PUSH:
+				self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0)
+				self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
+				self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
+			else:
+				self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
+				self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0)
+				self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
+				
+		elif self.detailMode == MODE_DELCONFIRM:
+			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
+			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
+			self.vwDetailMenuText[MENU_CONFIRM].set_text('Press Thumbs-Up to Confirm',
+									font=self.fonts.fnt20,
+									colornum=0xffffff,
+									flags=RSRC_HALIGN_LEFT)
+			self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(0)
+			
+		elif self.detailMode == MODE_PUSHCONFIRM:
+			for i in range(self.subMenuSize):
+				self.vwDetailSubMenuBkg[i].set_transparency(1) 
+			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
+			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
+			self.vwDetailMenuText[MENU_CONFIRM].set_text(self.pushText,
+									font=self.fonts.fnt16,
+									colornum=0xffffff,
+									flags=RSRC_HALIGN_LEFT)
+			self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(0)
+			
+		elif self.detailMode == MODE_INFO:			
+			for i in range(self.subMenuSize):
+				self.vwDetailSubMenuBkg[i].set_transparency(1) 
+			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(1)
+			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(1)
+			self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
+			
+		else: # MODE_TIVOMENU
+			if self.subMenuOffset != 0:
+				self.vwDetailSubMenuCueTop.set_resource(self.myimages.CueUp);
+			if self.subMenuOffset + self.subMenuSize < len(self.tivo):
+				self.vwDetailSubMenuCueBot.set_resource(self.myimages.CueDown);
+				
+			for i in range(self.subMenuSize):
+				tx = i + self.subMenuOffset
+				if tx < len(self.tivo):
+					self.vwDetailSubMenuText[i].set_text(self.tivo[tx]['name'],
+												font=self.fonts.fnt20,
+												colornum=0xffffff,
+												flags=RSRC_HALIGN_LEFT)
+					if i == self.subMenuSelection:
+						trans = 0
+					else:
+						trans = 0.75
+				else:
+					trans = 1
+				self.vwDetailSubMenuBkg[i].set_transparency(trans)
+
+	# create all the views for the listing screen and the shares screen
+	def createListingViews(self):
+		self.vwList = View(self, width=listViewWidth[self.res])
+		self.vwListText = []
+		self.vwListBkg = []
+		self.vwListIcon = []
+		self.vwListCue = []
+		for i in range(self.listSize):
+			yval = listYStart[self.res] + (i*listHeight[self.res])
+			bkg = View(self, height=40, width=listViewWidth[self.res], ypos=yval, parent=self.vwList)
+			self.vwListBkg.append(bkg)
+			self.vwListText.append(View(self, height=40, width=listViewWidth[self.res]-listXText[self.res]-10,
+									ypos=0, xpos=listXText[self.res], parent=bkg))
+			self.vwListIcon.append(View(self, height=32, width=32, ypos=4, xpos=listXIcon[self.res], parent=bkg))
+			self.vwListCue.append(View(self, height=32, width=32, ypos=4, xpos=listXCue[self.res], parent=bkg))
+			
+		self.vwListCueTop = View(self, height=32, width=32, ypos=listYStart[self.res]-listHeight[self.res]+3,
+								xpos=listXCue[self.res], parent=self.vwList)
+		self.vwListCueBot = View(self, height=32, width=32, ypos=listYStart[self.res]+listHeight[self.res]*self.listSize,
+								xpos=listXCue[self.res], parent=self.vwList)
+
+	# create the views for the details screen		
+	def createDetailsViews(self):
+		self.vwDetail = View(self, width=detailViewWidth[self.res], xpos = detailViewXPos[self.res], visible=False)
+		self.vwDetailTitle = View(self, height=40, ypos=81, xpos=60, parent=self.vwDetail)
+		self.vwDetailSubTitle = View(self, height=24, ypos=121, xpos=60, parent=self.vwDetail)
+		self.vwDetailDescription = View(self, height=detailDescHeight[self.res], width=detailDescWidth[self.res],
+									ypos=detailDescYPos[self.res], xpos=detailDescXPos[self.res], parent=self.vwDetail)
+		self.vwDetailMenuBkg = []
+		self.vwDetailMenuText = []
+		self.vwDetailSubMenuBkg = []
+		self.vwDetailSubMenuText = []
+		
+		if self.res == RES_HD:
+			self.vwDetailThumb = View(self, width=320, height=444, xpos=10, ypos=250, parent=self.vwDetail)
+
+		startymenu = detailMenuYPos[self.res]
+		xmenu = detailMenuXPos[self.res]
+		startysubmenu = detailSubMenuYPos[self.res]
+		xsubmenu = detailSubMenuXPos[self.res]
+
+		for i in range(self.subMenuSize):
+			ymenu = startymenu + (i*32)
+			bkg = View(self, height=30, width=240, xpos=xmenu, ypos=ymenu, parent=self.vwDetail)
+			txt = View(self, height=30, width=220, xpos=20, parent=bkg)
+			bkg.set_resource(self.myimages.MenuBkg)
+			self.vwDetailMenuBkg.append(bkg)
+			self.vwDetailMenuText.append(txt)
+			
+			ysubmenu = startysubmenu + (i*32)
+			bkg = View(self, height=30, width=240, xpos=xsubmenu, ypos=ysubmenu, parent=self.vwDetail)
+			txt = View(self, height=30, width=220, xpos=20, parent=bkg)
+			bkg.set_resource(self.myimages.MenuBkg)
+			self.vwDetailSubMenuBkg.append(bkg)
+			self.vwDetailSubMenuText.append(txt)
+			if i < len(self.tivo):
+				self.vwDetailSubMenuText[i].set_text(self.tivo[i]['name'], font=self.fonts.fnt20,
+										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
+
+		self.vwDetailSubMenuCueTop = View(self, height=32, width=32, ypos=detailSubCueTopY[self.res],
+										xpos=detailSubCueXPos[self.res], parent=self.vwDetail)
+		self.vwDetailSubMenuCueBot = View(self, height=32, width=32, ypos=detailSubCueBotY[self.res],
+										xpos=detailSubCueXPos[self.res], parent=self.vwDetail)
+
+		self.vwDetailCueTop = View(self, height=32, width=32, ypos=45, xpos=480, parent=self.vwDetail)
+		self.vwDetailCueBot = View(self, height=32, width=32, ypos=screenHeight[self.res]-80, xpos=480, parent=self.vwDetail)
+		
+		self.vwDetailMenuBkg[2].set_transparency(1) # unused for now
+		self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
+		self.vwDetailMenuText[MENU_PUSH].set_text('Push Video', font=self.fonts.fnt20,
+									colornum=0xffffff,
+									flags=RSRC_HALIGN_LEFT)
+		self.vwDetailMenuText[MENU_DELETE].set_text('Delete Video', font=self.fonts.fnt20,
+									colornum=0xffffff,
+									flags=RSRC_HALIGN_LEFT)
+	def ListCursorForward(self):
+		if self.listSelection+self.listOffset < len(self.listing)-1:
+			if self.listSelection < self.listSize-1:
+				self.listSelection = self.listSelection + 1
+			else:
+				self.listOffset = self.listOffset + 1
+			return True
+		else:
+			return False
+		
+	def ListCursorBackward(self):
+		if self.listSelection == 0:
+			if self.listOffset == 0:
+				return False
+			else:
+				self.listOffset = self.listOffset - 1
+		else:
+			self.listSelection = self.listSelection - 1
+		return True
+	
+	def FirstVideo(self):
+		i = self.listOffset + self.listSelection - 1
+		while (i >= 0):
+			if not self.listing[i]['dir']:
+				return False
+			
+			i = i - 1
+			
+		return True
+		
+	def LastVideo(self):
+		i = self.listOffset + self.listSelection + 1
+		while (i < len(self.listing)):
+			if not self.listing[i]['dir']:
+				return False
+			
+			i = i + 1
+			
+		return True
+	
+	def ListCursorPrevVideo(self):
+		saveOffset = self.listOffset
+		saveSel = self.listSelection
+		while (True):
+			if not self.ListCursorBackward():
+				self.listOffset = saveOffset
+				self.listSelection = saveSel
+				return False
+			if not self.listing[self.listOffset + self.listSelection]['dir']:
+				return True
+	
+	def ListCursorNextVideo(self):
+		saveOffset = self.listOffset
+		saveSel = self.listSelection
+		while (True):
+			if not self.ListCursorForward():
+				self.listOffset = saveOffset
+				self.listSelection = saveSel
+				return False
+			if not self.listing[self.listOffset + self.listSelection]['dir']:
+				return True
+
+	# load up tivo information from the config file
+	def loadTivos(self, cfg):
+		def cmptivo (left, right):
+			if (left['name'] == right['name']): return 0
+			if (left['name'] < right['name']): return -1
+			return 0
+		
+		tlist = []
+		section = 'tivos'
+		
+		allchars = maketrans('', '')
+		if cfg.has_section(section):
+			i = 0
+			while (True):
+				i = i + 1
+				namekey = 'tivo' + str(i) + '.name'
+				tsnkey = 'tivo' + str(i) +  '.tsn'
+				if cfg.has_option(section, namekey) and cfg.has_option(section, tsnkey):
+					tlist.append({'name' : cfg.get(section, namekey),
+									'tsn' : cfg.get(section, tsnkey).translate(allchars, '-')})
+				else:
+					break
+				
+		self.tivo = sorted(tlist, cmp=cmptivo)
+
+	# load up pytivo and shares information from config and from pytivo config(s)
+	def loadShares(self, cfg):
+		def cmpshare (left, right):
+			if (left['name'] == right['name']): return 0
+			if (left['name'] < right['name']): return -1
+			return 0
+		
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		s.connect(('4.2.2.1', 123))
+		defip = s.getsockname()[0]
+	
+		section = 'pytivos'
+		if cfg.has_section(section):
+			i = 0
+			while (True):
+				i = i + 1
+				key = "pytivo" + str(i) + ".config"
+				if not cfg.has_option(section, key): break
+				cfgfile = cfg.get(section, key)
+				
+				sep = None
+				sepkey = 'pytivo' + str(i) + '.sep'
+				if cfg.has_option(section, sepkey): sep = cfg.get(section, sepkey)
+				
+				ip = defip
+				key = "pytivo" + str(i) + ".ip"
+				if cfg.has_option(section, key):
+					ip = cfg.get(section, key)
+
+				port = None				
+				key = "pytivo" + str(i) + ".port"
+				if cfg.has_option(section, key):
+					port = cfg.get(section, key)
+				
+				self.parseCfgFile(cfgfile, ip, port, sep)
+		
+		self.share = sorted(self.share, cmp=cmpshare)
+
+	# parse a pytivo config looking for shares				
+	def parseCfgFile(self, cf, ip, defport, sep):
+		pyconfig = ConfigParser.ConfigParser()
+		configs_found = pyconfig.read(cf)
+		if not configs_found:
+			print "ERROR: pyTivo config file " + cf + " does not exist."
+			return
+
+		port = defport
+		if pyconfig.has_option('Server', 'port') : port = pyconfig.get('Server', 'port')
+		
+		if port == None:
+			print "Neither main config file nor pytivo config file " + cf + " has port number specified"
+		else:
+			for section in pyconfig.sections():
+				if (pyconfig.has_option(section, "type") and pyconfig.get(section, "type") == "video" and 
+					pyconfig.has_option(section, 'path')):
+					path = pyconfig.get(section, 'path')
+					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
+					
 	# delete the video and it's associated metadata file		
 	def delVideo(self, index):
 		path = os.path.join(self.share[self.shareSelection]['path'], self.listing[index]['path'])
@@ -695,7 +1010,7 @@ class Vidmgr(Application):
 			fullpath = os.path.join(fulldir, name)
 			if os.path.isdir(fullpath):
 				llist.append({'text': name, 
-									'icon': self.images.IconFolder, 
+									'icon': self.myimages.IconFolder, 
 									'path': relpath,
 									'dir': True})
 			else:
@@ -713,197 +1028,24 @@ class Vidmgr(Application):
 						title = meta['title']
 					else:
 						title = name
+					thumb = self.getThumb(fullpath, fulldir, meta)
 					llist.append({'text': title,
 									'meta': meta,
-									'icon': self.images.IconVideo,
+									'icon': self.myimages.IconVideo,
 									'path': relpath,
+									'thumb': thumb,
 									'dir': False})
 			
 		self.listing = sorted(llist, cmp=cmplist)
+		
+	def getThumb(self, fn, dir, meta):
+		thumb = None
+		for tfn in [ fn + '.jpg',
+					 os.path.join(dir, 'folder.jpg') ]:
+			if os.path.exists(tfn):
+				thumb = Image(self, tfn)
+				break
+		
+		return thumb
 
-	# paint the screen - first determine which screen we are painting		
-	def drawScreen(self):
-		if self.currentPage == PAGE_LIST:
-			self.drawScreenList()
-		elif self.currentPage == PAGE_DETAIL:
-			self.drawScreenDetail()
-		else: # PAGE_SHARES
-			self.drawScreenShares()
-	# draw the listing screen - this is the main screen that the user will be interacting with - this
-	# allows browsing through the directories	
-	def drawScreenList(self):
-		off = self.listOffset
-		self.SubTitleView.set_text(self.share[self.shareSelection]['name'] + ":" + self.currentDir,
-								font=self.fonts.fnt20,
-								colornum=0xffffff)
-		
-		# if there are no videos in this directory, just print a message to that effect and
-		# prompt for the left key
-		if (len(self.listing) == 0):
-			for i in range(self.listSize):
-				self.vwListBkg[i].clear_resource();
-				self.vwListCue[i].clear_resource();
-				self.vwListText[i].clear_resource()
-				self.vwListIcon[i].clear_resource()
-			self.vwListCueTop.clear_resource();
-			self.vwListCueBot.clear_resource();
-			self.vwListText[3].set_text('No videos in this folder - press LEFT to continue', font=self.fonts.fnt20,
-									colornum=0xffffff, flags=RSRC_HALIGN_LEFT);
-			self.vwListCue[3].set_resource(self.images.CueLeft)
-		
-		else:
-			self.vwListCueTop.clear_resource();
-			if self.listSelection == 0 and off != 0:
-				self.vwListCueTop.set_resource(self.images.CueUp)
-				
-			self.vwListCueBot.clear_resource();
-			if (self.listSelection == self.listSize-1) and (self.listSelection+self.listOffset < len(self.listing)-1):
-				self.vwListCueBot.set_resource(self.images.CueDown)
-			
-			for i in range(self.listSize):
-				self.vwListBkg[i].clear_resource()
-				self.vwListCue[i].clear_resource()
-				if (i+off < len(self.listing)):
-					if i == self.listSelection:
-						self.vwListBkg[i].set_resource(self.images.HiLite)
-						self.vwListCue[i].set_resource(self.images.CueLeft)
-					if i == self.listSelection-1:
-						self.vwListCue[i].set_resource(self.images.CueUp)
-					if i == self.listSelection+1:
-						self.vwListCue[i].set_resource(self.images.CueDown)
-					self.vwListText[i].set_text(self.listing[i+off]['text'], font=self.fonts.fnt24,
-										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
-					self.vwListIcon[i].set_resource(self.listing[i+off]['icon'])
-				else:
-					self.vwListText[i].clear_resource()
-					self.vwListIcon[i].clear_resource()
-					
-	# paint the shares screen - this is much like the listing screen above except that 1) it lists shares only, 
-	# and 2) we don't have to worry about it being empty because if it was empty we would have exited by now
-	def drawScreenShares(self):
-		self.SubTitleView.set_text("Shares", font=self.fonts.fnt20,
-									colornum=0xffffff)
-		
-		off = self.shareOffset
-		self.vwListCueTop.clear_resource();
-		if self.shareSelection == 0 and off != 0:
-			self.vwListCueTop.set_resource(self.images.CueUp)
-			
-		self.vwListCueBot.clear_resource();
-		if (self.shareSelection == self.listSize-1) and (self.shareSelection+off < len(self.share)-1):
-			self.vwListCueBot.set_resource(self.images.CueDown)		
-		
-		for i in range(self.listSize):
-			self.vwListBkg[i].clear_resource()
-			self.vwListCue[i].clear_resource()
-			self.vwListIcon[i].clear_resource()
-			sx = i + off
-			if (sx < len(self.share)):
-				if i == self.shareSelection:
-					self.vwListBkg[i].set_resource(self.images.HiLite)
-					self.vwListCue[i].set_resource(self.images.CueLeft)
-				if i == self.shareSelection-1:
-					self.vwListCue[i].set_resource(self.images.CueUp)
-				if i == self.shareSelection+1:
-					self.vwListCue[i].set_resource(self.images.CueDown)
-				self.vwListText[i].set_text(self.share[sx]['name'], font=self.fonts.fnt24,
-									colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
-			else:
-				self.vwListText[i].clear_resource()
 
-	# paint the detail screen
-	# this is the most detailed of all of the screens - in addition to the detail
-	# about the current video, it needs to paing the action menu and if in push mode, the
-	# submenu of tivos
-	def drawScreenDetail(self):		
-		index = self.indexDetail
-		self.SubTitleView.set_text("", font=self.fonts.fnt20,
-									colornum=0xffffff)
-	
-		if ((prevVideo(self.listing, index) == -1) or
-					(self.detailMode in [ MODE_DELCONFIRM, MODE_TIVOMENU ])):
-			self.vwDetailCueTop.clear_resource()
-		else:
-			self.vwDetailCueTop.set_resource(self.images.CueUp)
-			
-		if ((nextVideo(self.listing, index) == -1) or
-					(self.detailMode in [ MODE_DELCONFIRM, MODE_TIVOMENU ])):
-			self.vwDetailCueBot.clear_resource()
-		else:
-			self.vwDetailCueBot.set_resource(self.images.CueDown)
-
-		meta = self.listing[index]['meta']
-		
-		self.vwDetailTitle.set_text(meta['title'], font=self.fonts.fnt30,
-								colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
-		if 'episodeTitle' in meta:
-			self.vwDetailSubTitle.set_text(meta['episodeTitle'], font=self.fonts.fnt24,
-								colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
-		else:
-			self.vwDetailSubTitle.set_text("")
-			
-		if 'description' in meta:
-			self.vwDetailDescription.set_text(meta['description'], font=self.fonts.fnt16,
-								colornum=0x000000,
-								flags=RSRC_TEXT_WRAP + RSRC_HALIGN_LEFT)
-		else:
-			self.vwDetailDescription.set_text("")
-
-		self.vwDetailSubMenuCueTop.clear_resource()
-		self.vwDetailSubMenuCueBot.clear_resource()
-		
-		if self.detailMode == MODE_MENU:			
-			for i in range(self.subMenuSize):
-				self.vwDetailSubMenuBkg[i].set_transparency(1) 
-			if self.detailMenuSelection == MENU_PUSH:
-				self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0)
-				self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
-				self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
-			else:
-				self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
-				self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0)
-				self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
-				
-		elif self.detailMode == MODE_DELCONFIRM:
-			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
-			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
-			self.vwDetailMenuText[MENU_CONFIRM].set_text('Press Thumbs-Up to Confirm',
-									font=self.fonts.fnt20,
-									colornum=0xffffff,
-									flags=RSRC_HALIGN_LEFT)
-			self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(0)
-			
-		elif self.detailMode == MODE_PUSHCONFIRM:
-			for i in range(self.subMenuSize):
-				self.vwDetailSubMenuBkg[i].set_transparency(0.75) 
-			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
-			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
-			self.vwDetailMenuText[MENU_CONFIRM].set_text(self.pushText,
-									font=self.fonts.fnt16,
-									colornum=0xffffff,
-									flags=RSRC_HALIGN_LEFT)
-			self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(0)
-			
-		else: # MODE_TIVOMENU
-			if self.subMenuOffset != 0:
-				self.vwDetailSubMenuCueTop.set_resource(self.images.CueUp);
-			if self.subMenuOffset + self.subMenuSize < len(self.tivo):
-				self.vwDetailSubMenuCueBot.set_resource(self.images.CueDown);
-				
-			for i in range(self.subMenuSize):
-				tx = i + self.subMenuOffset
-				if tx < len(self.tivo):
-					self.vwDetailSubMenuText[i].set_text(self.tivo[tx]['name'],
-												font=self.fonts.fnt20,
-												colornum=0xffffff,
-												flags=RSRC_HALIGN_LEFT)
-					if i == self.subMenuSelection:
-						trans = 0
-					else:
-						trans = 0.75
-				else:
-					trans = 1
-				self.vwDetailSubMenuBkg[i].set_transparency(trans)
-			pass
-				
-		

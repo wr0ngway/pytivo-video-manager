@@ -1,5 +1,18 @@
 PyTivo Video Manager
 
+version 0.2
+
+Changes with version 0.2
+
+Support HD resolution - this allows addition of screen capture/art work.  Also, tried to pay more
+attention to TV safe area - although this is hard for HD since the simulator doesn't support HD.
+Added exts option to config file.
+
+
+
+
+
+
 what it is
 ==========
 
@@ -41,7 +54,14 @@ the hmeserver will start all apps that it finds.  If you do, then it will only s
 So if you do have this line and you do want to run vidmgr, add the word "vidmgr" to this line - no quotes
 or commas or other punctuation.
 
-	b) You need to tell vidmgr about your Tivos.  For each tivo, you need to specify the name and
+	b) you can specify the file extensions that vidmgr will pay attention to.  By default this is .mpg,
+.mp4, .wmv, and .avi.  You can put a line in config.ini in the [vidmgr] section to specify different
+extensions.  For example
+[vidmgr]
+exts=.mpg .mp4 .avi .wmv .m4v
+
+
+	c) You need to tell vidmgr about your Tivos.  For each tivo, you need to specify the name and
 the TSN.  The format for this is:
 [tivos]
 tivo1.name=Family Room
@@ -53,7 +73,7 @@ You can have an arbitrary number of Tivos, but as soon as vidmgr detects a gap i
 sequence it will stop parsing.  Make sure the TSN's are accurate as this is how pytivo knows which
 tivo to push to.
 
-	c) You need to tell vidmgr about your PyTivo instances.  There are 4 possible pytivo parameters:
+	d) You need to tell vidmgr about your PyTivo instances.  There are 4 possible pytivo parameters:
 		- config is mandatory and is the fully qualified name of the pytivo config file. 
 vidmgr reads this file to determine the share names and locations.  
 		- You may specify an ip address for the machine on which this instance of pytivo is running.
@@ -89,8 +109,14 @@ Vidmgr presents a directory tree to you.  You can step into and out of directori
 tivo navigation keys.  The directory tree is rooted at ths list of shares, unless there is only 1 share
 in which case it is rooted at the topmost directory of that share.
 
+In HD mode, vidmgr will also show video artwork on the right hand side of the screen.  Vidmgr looks for
+the following file:  <full-video-file-name-including-extension>.jpg or, if this doesn't exist, folder.jpg.
+The view into which this graphic is placed is 320 pixels wide by 44 pixels high.  If your graphic exceeds
+those dimensions it will be cropped.
+
 Once you choose a video file, you will be shown some of the metadata associated with that file,
-and then have two options - push or delete.
+and then have two options - push or delete.  In HD mode, this detail will be on the right side of the 
+screen as you navigate through the directories - it is not on a separate screen
 
 If you choose delete, you will be asked to press thumbs-up to confirm and when you do, the file and
 its associated metadata file will be deleted.  If you press ANYTHING other than thumbs-up, the

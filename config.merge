@@ -1,6 +1,9 @@
 [hmeserver]
 apps=vidmgr
 
+[vidmgr]
+exts=.mpg .mp4 .avi .wmv .m4v
+
 [tivos]
 tivo1.name=Family Room
 tivo1.tsn=TSN1
