@@ -7,7 +7,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.2'
+version = '0.2a'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -85,15 +85,16 @@ class Fonts:
 	
 class Vidmgr(Application):
 	def handle_resolution(self):
-		""" Choose the 'optimal' resolution. """
-		if (self.resolutions[0][0] == 640):
-			self.res = RES_SD
-		elif (self.resolutions[0][0] == 1280):
-			self.res = RES_HD
-		else:
-			self.active = False
-			self.snd('bonk')
+		for (hres, vres, x, y) in self.resolutions:
+			if (hres == 640):
+				self.res = RES_SD
+				return (hres, vres, x, y)
+			elif (hres == 1280):
+				self.res = RES_HD
+				return (hres, vres, x, y)
 			
+		self.active = False
+		self.sound('bonk')
 		return self.resolutions[0]
 	
 	def startup(self):
