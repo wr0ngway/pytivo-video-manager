@@ -74,6 +74,7 @@ def from_text(full_path):
                 key, value = [x.strip() for x in line.split(sep, 1)]
                 if not key or not value:
                     continue
+                value = ''.join([x for x in value if ord(x) < 128])
                 if key.startswith('v'):
                     if key in metadata:
                         metadata[key].append(value)
