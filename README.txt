@@ -1,6 +1,14 @@
 PyTivo Video Manager
 
-version 0.2
+version 0.2c
+
+Changes with 0.2c
+
+Added descsize option to alter size of description font
+
+Changes with 0.2b
+
+Added logic to metadata.py to strip non-ascii chars from meta data
 
 Changes with version 0.2
 
@@ -54,11 +62,13 @@ the hmeserver will start all apps that it finds.  If you do, then it will only s
 So if you do have this line and you do want to run vidmgr, add the word "vidmgr" to this line - no quotes
 or commas or other punctuation.
 
-	b) you can specify the file extensions that vidmgr will pay attention to.  By default this is .mpg,
-.mp4, .wmv, and .avi.  You can put a line in config.ini in the [vidmgr] section to specify different
-extensions.  For example
+	b) you can specify various vidmgr options:  specify the file extensions that vidmgr will pay
+attention to with the exts option.  By default this is .mpg, .mp4, .wmv, and .avi.  You can also
+specify the size of the font used for descriptive text - by default 16.  All of this is done by
+putting entries in the [vidmgr] section of the config.ini as follows:
 [vidmgr]
 exts=.mpg .mp4 .avi .wmv .m4v
+descsize=16
 
 
 	c) You need to tell vidmgr about your Tivos.  For each tivo, you need to specify the name and

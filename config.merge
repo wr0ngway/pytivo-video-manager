@@ -3,6 +3,7 @@ apps=vidmgr
 
 [vidmgr]
 exts=.mpg .mp4 .avi .wmv .m4v
+descsize=16
 
 [tivos]
 tivo1.name=Family Room
