@@ -1,6 +1,10 @@
 PyTivo Video Manager
 
-version 0.2c
+version 0.2d
+
+Changes with 0.2d
+
+Ignore directories beginning with . - this allows .meta directories for holding pytivo meta data
 
 Changes with 0.2c
 

@@ -1,5 +1,6 @@
 from hme import *
 import os
+import re
 import socket
 import metadata
 import ConfigParser
@@ -7,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.2c'
+version = '0.2d'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -1015,7 +1016,8 @@ class Vidmgr(Application):
 			relpath = os.path.join(self.currentDir, name)
 			fullpath = os.path.join(fulldir, name)
 			if os.path.isdir(fullpath):
-				llist.append({'text': name, 
+				if not name.startswith('.'):
+					llist.append({'text': name, 
 									'icon': self.myimages.IconFolder, 
 									'path': relpath,
 									'dir': True})
