@@ -1,5 +1,6 @@
 from hme import *
 import os
+import re
 import socket
 import metadata
 import ConfigParser
@@ -7,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.2b'
+version = '0.2e'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -82,6 +83,7 @@ class Fonts:
 		self.fnt20 = Font(app, size=20)
 		self.fnt24 = Font(app, size=24)
 		self.fnt30 = Font(app, size=30)
+		self.descfont = Font(app, size=app.descsize)
 	
 class Vidmgr(Application):
 	def handle_resolution(self):
@@ -101,10 +103,14 @@ class Vidmgr(Application):
 		global goodexts
 		
 		config = self.context.server.config
+		self.descsize = 16
+		
 		if config.has_section('vidmgr'):
 			for opt, value in config.items('vidmgr'):
 				if opt == 'exts':
 					goodexts = value.split()
+				elif opt == 'descsize':
+					self.descsize = int(value)
 
 		self.res = RES_SD
 
@@ -656,7 +662,7 @@ class Vidmgr(Application):
 					self.vwDetailThumb.set_visible(False)
 					
 			if 'description' in meta:
-				self.vwDetailDescription.set_text(meta['description'], font=self.fonts.fnt16,
+				self.vwDetailDescription.set_text(meta['description'], font=self.fonts.descfont,
 									colornum=0x000000,
 									flags=RSRC_TEXT_WRAP + RSRC_HALIGN_LEFT + RSRC_VALIGN_TOP)
 			else:
@@ -1010,7 +1016,8 @@ class Vidmgr(Application):
 			relpath = os.path.join(self.currentDir, name)
 			fullpath = os.path.join(fulldir, name)
 			if os.path.isdir(fullpath):
-				llist.append({'text': name, 
+				if not name.startswith('.'):
+					llist.append({'text': name, 
 									'icon': self.myimages.IconFolder, 
 									'path': relpath,
 									'dir': True})
@@ -1042,7 +1049,9 @@ class Vidmgr(Application):
 	def getThumb(self, fn, dir, meta):
 		thumb = None
 		for tfn in [ fn + '.jpg',
-					 os.path.join(dir, 'folder.jpg') ]:
+				os.path.join(dir, '.meta', fn + '.jpg'),
+				os.path.join(dir, 'folder.jpg'),
+				os.path.join(dir, '.meta', 'folder.jpg') ]:
 			if os.path.exists(tfn):
 				thumb = Image(self, tfn)
 				break
