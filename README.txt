@@ -1,6 +1,8 @@
 PyTivo Video Manager
 
-version 0.2e
+version 0.2f
+
+Version 0.2f properly implements what 0.2e was supposed to do
 
 Change with 0.2e
 

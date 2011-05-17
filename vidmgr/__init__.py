@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.2e'
+version = '0.2f'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -1036,7 +1036,7 @@ class Vidmgr(Application):
 						title = meta['title']
 					else:
 						title = name
-					thumb = self.getThumb(fullpath, fulldir, meta)
+					thumb = self.getThumb(fullpath, fulldir, name, meta)
 					llist.append({'text': title,
 									'meta': meta,
 									'icon': self.myimages.IconVideo,
@@ -1046,10 +1046,10 @@ class Vidmgr(Application):
 			
 		self.listing = sorted(llist, cmp=cmplist)
 		
-	def getThumb(self, fn, dir, meta):
+	def getThumb(self, fn, dir, name, meta):
 		thumb = None
 		for tfn in [ fn + '.jpg',
-				os.path.join(dir, '.meta', fn + '.jpg'),
+				os.path.join(dir, '.meta', name + '.jpg'),
 				os.path.join(dir, 'folder.jpg'),
 				os.path.join(dir, '.meta', 'folder.jpg') ]:
 			if os.path.exists(tfn):
