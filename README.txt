@@ -1,8 +1,12 @@
 PyTivo Video Manager
 
-version 0.2d
+version 0.2e
 
-Changes with 0.2d
+Change with 0.2e
+
+Allow artwork to be placed in the .meta subdirectory
+
+Change with 0.2d
 
 Ignore directories beginning with . - this allows .meta directories for holding pytivo meta data
 
