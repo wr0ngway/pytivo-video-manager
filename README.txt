@@ -1,5 +1,11 @@
 PyTivo Video Manager
 
+version 0.2g 
+
+When deleting a video, if the meta file was in the .meta directory, it was not
+deleted.  Also, the jpg artwork file was not deleted either.  Both of these 
+have been fixed
+
 version 0.2f
 
 Version 0.2f properly implements what 0.2e was supposed to do

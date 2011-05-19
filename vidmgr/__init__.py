@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.2f'
+version = '0.2g'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -953,18 +953,30 @@ class Vidmgr(Application):
 					
 	# delete the video and it's associated metadata file		
 	def delVideo(self, index):
-		path = os.path.join(self.share[self.shareSelection]['path'], self.listing[index]['path'])
+		curdir = os.path.join(self.share[self.shareSelection]['path'], self.currentDir)
+		name = self.listing[index]['name']
+		fqFileName = os.path.join(self.share[self.shareSelection]['path'], self.listing[index]['path'])
 		try:
-			os.remove(path)
+			pass
+			os.remove(fqFileName)
 		except:
 			self.sound('bonk')
 		
-		metapath = path + '.txt'
-		if os.path.exists(metapath):
-			try:
-				os.remove(metapath)
-			except:
-				self.sound('bonk')
+		for metapath in [ fqFileName + '.txt', 
+						os.path.join(curdir, '.meta', name + '.txt') ]:
+			if os.path.exists(metapath):
+				try:
+					os.remove(metapath)
+				except:
+					self.sound('bonk')
+					
+		for tnpath in [ fqFileName + '.jpg', 
+						os.path.join(curdir, '.meta', name + '.jpg') ]:
+			if os.path.exists(tnpath):
+				try:
+					os.remove(tnpath)
+				except:
+					self.sound('bonk')
 
 	# push the video to the seletced tivo
 	def pushVideo(self, vidindex, tivoindex, shareindex):
@@ -1039,6 +1051,7 @@ class Vidmgr(Application):
 					thumb = self.getThumb(fullpath, fulldir, name, meta)
 					llist.append({'text': title,
 									'meta': meta,
+									'name': name,
 									'icon': self.myimages.IconVideo,
 									'path': relpath,
 									'thumb': thumb,
