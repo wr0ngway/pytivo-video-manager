@@ -137,7 +137,7 @@ in which case it is rooted at the topmost directory of that share.
 
 In HD mode, vidmgr will also show video artwork on the right hand side of the screen.  Vidmgr looks for
 the following file:  <full-video-file-name-including-extension>.jpg or, if this doesn't exist, folder.jpg.
-The view into which this graphic is placed is 320 pixels wide by 44 pixels high.  If your graphic exceeds
+The view into which this graphic is placed is 320 pixels wide by 444 pixels high.  If your graphic exceeds
 those dimensions it will be cropped.
 
 Once you choose a video file, you will be shown some of the metadata associated with that file,
