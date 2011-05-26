@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.2g'
+version = '0.3'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -27,6 +27,15 @@ MENU_CONFIRM = 3
 
 RES_SD = 0
 RES_HD = 1
+
+DISP_NORMAL = 0
+DISP_FILE = 1
+DISP_EPTITLE = 2
+DISP_EPNUMTITLE = 3
+
+SORT_NORMAL = 0
+SORT_FILE = 1
+SORT_EPNUM = 2
 
 screenWidth = [ 640, 1280 ]
 screenHeight = [ 480, 720 ]
@@ -104,6 +113,8 @@ class Vidmgr(Application):
 		
 		config = self.context.server.config
 		self.descsize = 16
+		self.dispopt = DISP_NORMAL
+		self.sortopt = SORT_NORMAL
 		
 		if config.has_section('vidmgr'):
 			for opt, value in config.items('vidmgr'):
@@ -111,6 +122,26 @@ class Vidmgr(Application):
 					goodexts = value.split()
 				elif opt == 'descsize':
 					self.descsize = int(value)
+				elif opt == 'display':
+					if (value == 'episodetitle'):
+						self.dispopt = DISP_EPTITLE
+					if (value == 'episodenumtitle'):
+						self.dispopt = DISP_EPNUMTITLE
+					elif (value == 'file'):
+						self.dispopt = DISP_FILE
+					elif (value == 'normal'):
+						pass
+					else:
+						print "Invalid display option - assuming default value"
+				elif opt == 'sort':
+					if (value == 'episodenumber'):
+						self.sortopt = SORT_EPNUM
+					elif (value == 'file'):
+						self.sortopt = SORT_FILE
+					elif (value == 'normal'):
+						pass
+					else:
+						print "Invalid sort option - assuming default value"
 
 		self.res = RES_SD
 
@@ -457,7 +488,7 @@ class Vidmgr(Application):
 					
 			elif keynum in [ KEY_RIGHT, KEY_SELECT ]:
 				# push the video and then back to MODE_MENU
-				self.pushVideo(self.indexDetail, self.subMenuSelection, self.shareSelection)
+				self.pushVideo(self.indexDetail, self.subMenuSelection, self.shareSelection+self.shareOffset)
 				self.detailMode = MODE_PUSHCONFIRM
 				snd = 'alert'
 			else:
@@ -499,7 +530,7 @@ class Vidmgr(Application):
 					snd = 'alert'
 				else: # MENU_PUSH
 					if len(self.tivo) == 1:
-						self.pushVideo(self.indexDetail, 0, self.shareSelection)
+						self.pushVideo(self.indexDetail, 0, self.shareSelection+self.shareOffset)
 						snd = 'alert'
 						self.detailMode = MODE_PUSHCONFIRM
 					else:
@@ -537,7 +568,7 @@ class Vidmgr(Application):
 	# allows browsing through the directories	
 	def drawScreenList(self):
 		off = self.listOffset
-		self.SubTitleView.set_text(self.share[self.shareSelection]['name'] + ":" + self.currentDir,
+		self.SubTitleView.set_text(self.share[self.shareSelection+self.shareOffset]['name'] + ":" + self.currentDir,
 								font=self.fonts.fnt20,
 								colornum=0xffffff, flags=RSRC_VALIGN_BOTTOM)
 		
@@ -575,7 +606,7 @@ class Vidmgr(Application):
 						self.vwListCue[i].set_resource(self.myimages.CueUp)
 					if i == self.listSelection+1:
 						self.vwListCue[i].set_resource(self.myimages.CueDown)
-					self.vwListText[i].set_text(self.listing[i+off]['text'], font=self.fonts.fnt24,
+					self.vwListText[i].set_text(self.listing[i+off]['disptext'], font=self.fonts.fnt24,
 										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
 					self.vwListIcon[i].set_resource(self.listing[i+off]['icon'])
 				else:
@@ -953,9 +984,9 @@ class Vidmgr(Application):
 					
 	# delete the video and it's associated metadata file		
 	def delVideo(self, index):
-		curdir = os.path.join(self.share[self.shareSelection]['path'], self.currentDir)
+		curdir = os.path.join(self.share[self.shareSelection+self.shareOffset]['path'], self.currentDir)
 		name = self.listing[index]['name']
-		fqFileName = os.path.join(self.share[self.shareSelection]['path'], self.listing[index]['path'])
+		fqFileName = os.path.join(self.share[self.shareSelection+self.shareOffset]['path'], self.listing[index]['path'])
 		try:
 			pass
 			os.remove(fqFileName)
@@ -1011,8 +1042,8 @@ class Vidmgr(Application):
 		# we sort directories first, and then asciibetically by name
 		def cmplist (left, right):
 			if (left['dir'] == right['dir']):
-				if (left['text'] < right['text']): return -1
-				if (left['text'] > right['text']): return 1
+				if (left['sorttext'] < right['sorttext']): return -1
+				if (left['sorttext'] > right['sorttext']): return 1
 				return 0
 			elif (left['dir']): return -1
 			else: return 1
@@ -1021,7 +1052,7 @@ class Vidmgr(Application):
 		
 		llist = []
 
-		root = self.share[self.shareSelection]['path']
+		root = self.share[self.shareSelection+self.shareOffset]['path']
 		fulldir = os.path.join(root, self.currentDir)
 		names = os.listdir(fulldir)
 		for name in names:
@@ -1029,7 +1060,7 @@ class Vidmgr(Application):
 			fullpath = os.path.join(fulldir, name)
 			if os.path.isdir(fullpath):
 				if not name.startswith('.'):
-					llist.append({'text': name, 
+					llist.append({'sorttext': name, 'disptext': name,
 									'icon': self.myimages.IconFolder, 
 									'path': relpath,
 									'dir': True})
@@ -1039,17 +1070,11 @@ class Vidmgr(Application):
 					if not 'title' in meta:
 						meta = metadata.basic(fullpath)
 						
-					if 'episodeTitle' in meta:
-						if 'title' in meta:
-							title = meta['title'] + ':' + meta['episodeTitle']
-						else:
-							title = meta['episodeTitle']
-					elif 'title' in meta:
-						title = meta['title']
-					else:
-						title = name
+					(sorttext, disptext) = self.formatTitles(meta, name)
+	
 					thumb = self.getThumb(fullpath, fulldir, name, meta)
-					llist.append({'text': title,
+					llist.append({'sorttext': sorttext,
+									'disptext': disptext,
 									'meta': meta,
 									'name': name,
 									'icon': self.myimages.IconVideo,
@@ -1058,6 +1083,50 @@ class Vidmgr(Application):
 									'dir': False})
 			
 		self.listing = sorted(llist, cmp=cmplist)
+	
+	def formatTitles(self, meta, filename):
+		if self.sortopt == SORT_FILE:
+			sorttext = filename
+		else:
+			usedEpisodeNum = False
+			if self.sortopt == SORT_EPNUM:
+				if 'episodeNumber' in meta:
+					usedEpisodeNum = True
+					if 'title' in meta:
+						sorttext = meta['title'] + ':' + meta['episodeNumber']
+					else:
+						sorttext = meta['episodeNumber']
+			if not usedEpisodeNum:			
+				if 'episodeTitle' in meta:
+					if 'title' in meta:
+						sorttext = meta['title'] + ':' + meta['episodeTitle']
+					else:
+						sorttext = meta['episodeTitle']
+				elif 'title' in meta:
+					sorttext = meta['title']
+				else:
+					sorttext = filename
+	
+		if self.dispopt == DISP_FILE:
+			disptext = filename
+		else:
+			if 'episodeTitle' in meta:
+				if self.dispopt == DISP_EPTITLE or self.dispopt == DISP_EPNUMTITLE:
+					if 'episodeNumber' in meta and self.dispopt == DISP_EPNUMTITLE:
+						disptext = meta['episodeNumber'] + '-' + meta['episodeTitle']
+					else:
+						disptext = meta['episodeTitle']
+				else:
+					if 'title' in meta:
+						disptext = meta['title'] + ':' + meta['episodeTitle']
+					else:
+						disptext = meta['episodeTitle']
+			elif 'title' in meta:
+				disptext = meta['title']
+			else:
+				disptext = filename
+		
+		return (sorttext, disptext)
 		
 	def getThumb(self, fn, dir, name, meta):
 		thumb = None

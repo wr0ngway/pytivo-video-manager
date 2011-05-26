@@ -1,5 +1,22 @@
 PyTivo Video Manager
 
+version 0.3
+
+Allow various sorting and display options:
+display=file - only display the file name
+       =episodetitle - only display the episode name
+       =episodenumtitle = display both the episode number and name
+if not specified (or if an invalid option is specified) then it will display title+episode title
+If you specify metadata that does not exist, vidmgr will use the title and/or the file name in order to display something
+
+sort=file - sort the screen listing based on the file name only
+    =episodenumber - sort based on the episode number (if present) - NOTE - this is a character string comparison - not numeric
+If not specified (or if an invalid option is specified) sorting will be based on title and/or file name
+Again, if the specified meta data does not exist, a sort key will be built from whatever is available using title and/or filename
+
+Also in version 0.3 - fixed the issue reported by reneg where shares on the second and subsequent pages of the shares listing were wrong
+
+
 version 0.2g 
 
 When deleting a video, if the meta file was in the .meta directory, it was not
@@ -14,7 +31,9 @@ Change with 0.2e
 
 Allow artwork to be placed in the .meta subdirectory
 
-Change with 0.2d
+version 0.2d
+
+Changes with 0.2d
 
 Ignore directories beginning with . - this allows .meta directories for holding pytivo meta data
 
@@ -137,7 +156,7 @@ in which case it is rooted at the topmost directory of that share.
 
 In HD mode, vidmgr will also show video artwork on the right hand side of the screen.  Vidmgr looks for
 the following file:  <full-video-file-name-including-extension>.jpg or, if this doesn't exist, folder.jpg.
-The view into which this graphic is placed is 320 pixels wide by 444 pixels high.  If your graphic exceeds
+The view into which this graphic is placed is 320 pixels wide by 44 pixels high.  If your graphic exceeds
 those dimensions it will be cropped.
 
 Once you choose a video file, you will be shown some of the metadata associated with that file,
