@@ -1,5 +1,11 @@
 PyTivo Video Manager
 
+version 0.3a
+
+Removed the clear key - it no longer exits the app. 
+Removed calls to unicode from metadata.py
+Added functionality to advance key - if pressed while at the end of a list, it will move to the start of the list.
+
 version 0.3
 
 Allow various sorting and display options:

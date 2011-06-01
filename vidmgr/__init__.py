@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.3'
+version = '0.3a'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -267,12 +267,16 @@ class Vidmgr(Application):
 				self.listOffset = 0
 				
 			elif keynum == KEY_ADVANCE:
-				self.listOffset = len(self.listing) - self.listSize
-				if self.listOffset < 0:
+				if self.listOffset + self.listSelection >= len(self.listing) - 1:
+					self.listSelection = 0
 					self.listOffset = 0
-					self.listSelection = len(self.listing)-1
 				else:
-					self.listSelection = self.listSize - 1
+					self.listOffset = len(self.listing) - self.listSize
+					if self.listOffset < 0:
+						self.listOffset = 0
+						self.listSelection = len(self.listing)-1
+					else:
+						self.listSelection = self.listSize - 1
 					
 			elif keynum in [KEY_SELECT, KEY_RIGHT]:
 				index = self.listOffset + self.listSelection;
@@ -293,10 +297,6 @@ class Vidmgr(Application):
 					self.detailMode = MODE_MENU
 					self.detailMenuSelection = MENU_PUSH
 				
-			elif keynum == KEY_CLEAR:
-				self.active = False
-				snd = None
-					
 			elif keynum == KEY_LEFT:
 				if len(self.directoryStack) == 0:
 					# no more level to pop out from - either bring up
@@ -372,12 +372,16 @@ class Vidmgr(Application):
 			self.shareOffset = 0
 			
 		elif keynum == KEY_ADVANCE:
-			self.shareOffset = len(self.share) - self.listSize
-			if self.shareOffset < 0:
+			if self.shareOffset + self.shareSelection >= len(self.share) - 1:
+				self.shareSelection = 0
 				self.shareOffset = 0
-				self.shareSelection = len(self.share)-1
 			else:
-				self.shareSelection = self.listSize - 1
+				self.shareOffset = len(self.share) - self.listSize
+				if self.shareOffset < 0:
+					self.shareOffset = 0
+					self.shareSelection = len(self.share)-1
+				else:
+					self.shareSelection = self.listSize - 1
 
 		# jump into the chose directory			
 		elif keynum in [KEY_SELECT, KEY_RIGHT]:
@@ -389,7 +393,7 @@ class Vidmgr(Application):
 			self.detailMode = MODE_INFO
 
 			
-		elif keynum in [ KEY_LEFT, KEY_CLEAR ]:
+		elif keynum == KEY_LEFT:
 			self.active = False
 			snd = None
 				
@@ -479,12 +483,16 @@ class Vidmgr(Application):
 				self.subMenuOffset = 0
 				
 			elif keynum == KEY_ADVANCE:
-				self.subMenuOffset = len(self.tivo) - self.subMenuSize
-				if self.subMenuOffset < 0:
+				if self.subMenuOffset + self.subMenuSelection >= len(self.tivo) - 1:
+					self.subMenuSelection = 0
 					self.subMenuOffset = 0
-					self.subMenuSelection = len(self.tivo)-1
-				else:
-					self.subMenuSelection = self.subMenuSize - 1
+				else :
+					self.subMenuOffset = len(self.tivo) - self.subMenuSize
+					if self.subMenuOffset < 0:
+						self.subMenuOffset = 0
+						self.subMenuSelection = len(self.tivo)-1
+					else:
+						self.subMenuSelection = self.subMenuSize - 1
 					
 			elif keynum in [ KEY_RIGHT, KEY_SELECT ]:
 				# push the video and then back to MODE_MENU
@@ -538,10 +546,6 @@ class Vidmgr(Application):
 						self.subMenuSelection = 0
 						self.subMenuOffset = 0
 									
-			elif keynum == KEY_CLEAR:
-				self.active = False
-				snd = None
-				
 			else:
 				snd = 'bonk'
 		

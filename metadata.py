@@ -57,7 +57,7 @@ def _tag_value(element, tag):
 
 def from_text(full_path):
     metadata = {}
-    path, name = os.path.split(unicode(full_path, 'utf-8'))
+    path, name = os.path.split(full_path)
     title, ext = os.path.splitext(name)
 
     for metafile in [os.path.join(path, title) + '.properties',
@@ -95,7 +95,7 @@ def from_text(full_path):
 def basic(full_path):
     base_path, name = os.path.split(full_path)
     title, ext = os.path.splitext(name)
-    mtime = os.stat(unicode(full_path, 'utf-8')).st_mtime
+    mtime = os.stat(full_path).st_mtime
     if (mtime < 0):
         mtime = 0
     originalAirDate = datetime.fromtimestamp(mtime)
