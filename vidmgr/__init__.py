@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.3a'
+version = '0.3b'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -85,6 +85,7 @@ class Images:
 		self.MenuBkg    = Image(app, os.path.join(p, 'menubkg' + suffix + '.png'))
 		self.IconFolder = Image(app, os.path.join(p, 'folder' + suffix + '.png'))
 		self.IconVideo  = Image(app, os.path.join(p, 'video' + suffix + '.png'))
+		self.PleaseWait  = Image(app, os.path.join(p, 'pleasewait' + suffix + '.png'))
 
 class Fonts:
 	def __init__(self, app):
@@ -202,7 +203,9 @@ class Vidmgr(Application):
 		self.subMenuSize = subMenuSize[self.res]
 		# now create the details page views
 		self.createDetailsViews()
-
+		
+		self.PleaseWaitView = View(self, visible=False, height=66, width=66, xpos=screenWidth[self.res]/2-33, ypos=screenHeight[self.res]/2-33)
+		self.PleaseWaitView.set_resource(self.myimages.PleaseWait)
 		# get things started - set up the first page
 		# if there is only 1 share - jump right to it - otherwise, put up a page of the shares
 		if len(self.share) == 1:
@@ -286,7 +289,9 @@ class Vidmgr(Application):
 					self.currentDir = self.listing[index]['path']
 					self.listSelection = 0
 					self.listOffset = 0
-					self.createListing()
+					self.PleaseWaitView.set_visible(True)
+					self.send_key(KEY_TIVO, 0)
+					return
 				else:
 					# bring up the details about the selected video
 					if self.res == RES_SD:
@@ -296,6 +301,10 @@ class Vidmgr(Application):
 					self.currentPage = PAGE_DETAIL
 					self.detailMode = MODE_MENU
 					self.detailMenuSelection = MENU_PUSH
+					
+			elif keynum == KEY_TIVO and rawcode == 0:
+				self.createListing()
+				self.PleaseWaitView.set_visible(False)
 				
 			elif keynum == KEY_LEFT:
 				if len(self.directoryStack) == 0:
@@ -314,7 +323,9 @@ class Vidmgr(Application):
 					self.currentDir = s['dir']
 					self.listSelection = s['selection']
 					self.listOffset = s['offset']
-					self.createListing()
+					self.PleaseWaitView.set_visible(True)
+					self.send_key(KEY_TIVO, 0)
+					return
 				
 			else:
 				snd = 'bonk'
@@ -388,9 +399,14 @@ class Vidmgr(Application):
 			self.currentDir = ""
 			self.listSelection = 0
 			self.listOffset = 0
+			self.PleaseWaitView.set_visible(True)
+			self.send_key(KEY_TIVO, 0)
+			
+		elif keynum == KEY_TIVO:
 			self.createListing()
 			self.currentPage = PAGE_LIST
 			self.detailMode = MODE_INFO
+			self.PleaseWaitView.set_visible(False)
 
 			
 		elif keynum == KEY_LEFT:
@@ -412,9 +428,15 @@ class Vidmgr(Application):
 		snd = 'updown'	
 		if self.detailMode == MODE_DELCONFIRM:	
 			if keynum == KEY_THUMBSUP:
+				self.PleaseWaitView.set_visible(True)
+				self.send_key(KEY_TIVO, 0)
+				return
+			
+			elif keynum == KEY_TIVO:				
 				self.delVideo(self.indexDetail)
 				self.sleep(2);
 				self.createListing();
+				self.PleaseWaitView.set_visible(False)
 				
 				self.detailMode = MODE_MENU
 				if (self.indexDetail >= len(self.listing)):
@@ -496,8 +518,14 @@ class Vidmgr(Application):
 					
 			elif keynum in [ KEY_RIGHT, KEY_SELECT ]:
 				# push the video and then back to MODE_MENU
+				self.PleaseWaitView.set_visible(True)
+				self.send_key(KEY_TIVO, 0)
+				return
+			
+			elif keynum == KEY_TIVO and rawcode == 0:
 				self.pushVideo(self.indexDetail, self.subMenuSelection, self.shareSelection+self.shareOffset)
 				self.detailMode = MODE_PUSHCONFIRM
+				self.PleaseWaitView.set_visible(False)
 				snd = 'alert'
 			else:
 				snd = 'bonk'
@@ -538,13 +566,19 @@ class Vidmgr(Application):
 					snd = 'alert'
 				else: # MENU_PUSH
 					if len(self.tivo) == 1:
-						self.pushVideo(self.indexDetail, 0, self.shareSelection+self.shareOffset)
-						snd = 'alert'
-						self.detailMode = MODE_PUSHCONFIRM
+						self.PleaseWaitView.set_visible(True)
+						self.send_key(KEY_TIVO, 1)
+						return
 					else:
 						self.detailMode = MODE_TIVOMENU
 						self.subMenuSelection = 0
 						self.subMenuOffset = 0
+						
+			elif keynum == KEY_TIVO and rawcode == 1:
+				self.pushVideo(self.indexDetail, 0, self.shareSelection+self.shareOffset)
+				self.detailMode = MODE_PUSHCONFIRM
+				self.PleaseWaitView.set_visible(False)
+				snd = 'alert'
 									
 			else:
 				snd = 'bonk'
@@ -645,7 +679,7 @@ class Vidmgr(Application):
 					self.vwListCue[i].set_resource(self.myimages.CueUp)
 				if i == self.shareSelection+1:
 					self.vwListCue[i].set_resource(self.myimages.CueDown)
-				self.vwListText[i].set_text(self.share[sx]['name'], font=self.fonts.fnt24,
+				self.vwListText[i].set_text(self.share[sx]['dispname'], font=self.fonts.fnt24,
 									colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
 			else:
 				self.vwListText[i].clear_resource()
@@ -698,7 +732,7 @@ class Vidmgr(Application):
 					
 			if 'description' in meta:
 				self.vwDetailDescription.set_text(meta['description'], font=self.fonts.descfont,
-									colornum=0x000000,
+									colornum=0xffffff,
 									flags=RSRC_TEXT_WRAP + RSRC_HALIGN_LEFT + RSRC_VALIGN_TOP)
 			else:
 				self.vwDetailDescription.set_text("")
@@ -984,7 +1018,8 @@ class Vidmgr(Application):
 				if (pyconfig.has_option(section, "type") and pyconfig.get(section, "type") == "video" and 
 					pyconfig.has_option(section, 'path')):
 					path = pyconfig.get(section, 'path')
-					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
+					dispname = section + ' (' + str(self.countFiles(path)) + ')'
+					self.share.append({'name' : section, 'dispname' : dispname, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
 					
 	# delete the video and it's associated metadata file		
 	def delVideo(self, index):
@@ -1053,7 +1088,6 @@ class Vidmgr(Application):
 			else: return 1
 			
 		self.listing = []
-		
 		llist = []
 
 		root = self.share[self.shareSelection+self.shareOffset]['path']
@@ -1063,11 +1097,12 @@ class Vidmgr(Application):
 			relpath = os.path.join(self.currentDir, name)
 			fullpath = os.path.join(fulldir, name)
 			if os.path.isdir(fullpath):
-				if not name.startswith('.'):
-					llist.append({'sorttext': name, 'disptext': name,
-									'icon': self.myimages.IconFolder, 
-									'path': relpath,
-									'dir': True})
+				if name.startswith('.'): continue
+				dispname = name + ' (' + str(self.countFiles(fullpath)) + ')'
+				llist.append({'sorttext': name, 'disptext': dispname,
+								'icon': self.myimages.IconFolder, 
+								'path': relpath,
+								'dir': True})
 			else:
 				if os.path.splitext(name)[1].lower() in goodexts:
 					meta = metadata.from_text(fullpath)
@@ -1087,7 +1122,19 @@ class Vidmgr(Application):
 									'dir': False})
 			
 		self.listing = sorted(llist, cmp=cmplist)
-	
+
+	def countFiles(self, dir):
+		tally = 0
+		names = os.listdir(dir)
+		for name in names:
+			fullpath = os.path.join(dir, name)
+			if os.path.isdir(fullpath):
+				if not name.startswith('.'): tally = tally + 1
+			else:
+				if os.path.splitext(name)[1].lower() in goodexts:
+					tally = tally + 1
+		return(tally)
+		
 	def formatTitles(self, meta, filename):
 		if self.sortopt == SORT_FILE:
 			sorttext = filename

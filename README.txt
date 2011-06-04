@@ -1,5 +1,10 @@
 PyTivo Video Manager
 
+version 0.3b
+
+Added 1) share and directory listings show the number of videos and directories contained within them, and 2) added a "Please Wait" icon
+during length operations - currently this includes:  building a directory listing, pushing a video, and deleting a video.
+
 version 0.3a
 
 Removed the clear key - it no longer exits the app. 
