@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.3b'
+version = '0.3c'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 
 PAGE_SHARES = 0
@@ -126,7 +126,7 @@ class Vidmgr(Application):
 				elif opt == 'display':
 					if (value == 'episodetitle'):
 						self.dispopt = DISP_EPTITLE
-					if (value == 'episodenumtitle'):
+					elif (value == 'episodenumtitle'):
 						self.dispopt = DISP_EPNUMTITLE
 					elif (value == 'file'):
 						self.dispopt = DISP_FILE
@@ -230,7 +230,7 @@ class Vidmgr(Application):
 	# where the directory is empty - in this case, only the left arrow if permissible		
 	def handle_key_pressList(self, keynum, rawcode):
 		snd = 'updown'
-		if len(self.listing) == 0 and keynum != KEY_LEFT:
+		if len(self.listing) == 0 and keynum not in [ KEY_LEFT, KEY_TIVO ]:
 			snd = 'bonk'
 		else:
 			# if I get herem either 1) there are directory entries in the listing list, or
@@ -657,6 +657,8 @@ class Vidmgr(Application):
 		self.SubTitleView.set_text("Shares", font=self.fonts.fnt20,
 									colornum=0xffffff)
 		
+		self.updateShares()
+		
 		off = self.shareOffset
 		self.vwListCueTop.clear_resource();
 		if self.shareSelection == 0 and off != 0:
@@ -897,6 +899,8 @@ class Vidmgr(Application):
 	
 	def FirstVideo(self):
 		i = self.listOffset + self.listSelection - 1
+		if i >= len(self.listing): return True
+		
 		while (i >= 0):
 			if not self.listing[i]['dir']:
 				return False
@@ -1018,9 +1022,14 @@ class Vidmgr(Application):
 				if (pyconfig.has_option(section, "type") and pyconfig.get(section, "type") == "video" and 
 					pyconfig.has_option(section, 'path')):
 					path = pyconfig.get(section, 'path')
-					dispname = section + ' (' + str(self.countFiles(path)) + ')'
-					self.share.append({'name' : section, 'dispname' : dispname, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
+					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
 					
+	def updateShares(self):
+		for share in self.share:
+			path = share['path']
+			dispname = share['name'] + ' (' + str(self.countFiles(path)) + ')'
+			share['dispname'] = dispname
+			
 	# delete the video and it's associated metadata file		
 	def delVideo(self, index):
 		curdir = os.path.join(self.share[self.shareSelection+self.shareOffset]['path'], self.currentDir)

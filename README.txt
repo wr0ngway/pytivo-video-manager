@@ -1,5 +1,9 @@
 PyTivo Video Manager
 
+version 0.3c
+
+Fixed bug when navigating OUT of an empty directory and bug where share list was not being updated when a video is deleted
+
 version 0.3b
 
 Added 1) share and directory listings show the number of videos and directories contained within them, and 2) added a "Please Wait" icon
