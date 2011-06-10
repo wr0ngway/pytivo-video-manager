@@ -1,5 +1,9 @@
 PyTivo Video Manager
 
+version 0.4
+
+Added an info page that pops up when you press the info button and displays all the metadata about the current video
+
 version 0.3c
 
 Fixed bug when navigating OUT of an empty directory and bug where share list was not being updated when a video is deleted

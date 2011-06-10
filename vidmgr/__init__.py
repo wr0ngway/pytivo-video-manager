@@ -8,8 +8,41 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.3c'
+version = '0.4'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
+orderedMeta = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
+metaXlate = { 'title': 'Title',
+			'originalAirDate': 'Original Air Date',
+			'time': 'Time',
+			'duration': 'Duration',
+			'description': 'Description',
+			'seriesTitle': 'Series Title',
+			'seriesId': 'Series ID',
+			'episodeTitle': 'Episode Title',
+			'episodeNumber': 'Episode Number',
+			'movieYear': 'Movie Year',
+			'tvRating': 'TV Rating',
+			'mpaaRating': 'MPAA Rating',
+			'starRating': 'Star Rating',
+			'colorCode': 'Color Code',
+			'showingBits': 'Showing Bits',
+			'partCount': 'Part Count',
+			'partIndex': 'Part Index',
+			'callsign': 'Call Sign',
+			'displayMajorNumber': 'Display Major Number',
+			'vSeriesGenre': 'Series Genre',
+			'vProgramGenre': 'Program Genre',
+			'vChoreographer': 'Choreographer',
+			'vExecProducer': 'Exec Producer',
+			'vGuestStar': 'Guest Star',
+			'vHost': 'Host',
+			'vProducer': 'Producer',
+			'vDirector': 'Director',
+			'vActor': 'Actor',
+			'vWriter': 'Writer',
+			}
+metaIgnore = [ 'isEpisode', 'isEpisodic' ]
+
 
 PAGE_SHARES = 0
 PAGE_LIST = 1
@@ -39,6 +72,8 @@ SORT_EPNUM = 2
 
 screenWidth = [ 640, 1280 ]
 screenHeight = [ 480, 720 ]
+infoHeight = [ 420, 600 ]
+infoWidth = [ 580, 1160 ]
 listViewWidth = [ 640, 640 ]
 listSize = [ 8, 12 ]
 titleYPos = [ 24, 36 ]
@@ -86,6 +121,9 @@ class Images:
 		self.IconFolder = Image(app, os.path.join(p, 'folder' + suffix + '.png'))
 		self.IconVideo  = Image(app, os.path.join(p, 'video' + suffix + '.png'))
 		self.PleaseWait  = Image(app, os.path.join(p, 'pleasewait' + suffix + '.png'))
+		self.Info  = Image(app, os.path.join(p, 'info' + suffix + '.png'))
+		self.InfoUp  = Image(app, os.path.join(p, 'infoup' + suffix + '.png'))
+		self.InfoDown  = Image(app, os.path.join(p, 'infodown' + suffix + '.png'))
 
 class Fonts:
 	def __init__(self, app):
@@ -94,6 +132,7 @@ class Fonts:
 		self.fnt24 = Font(app, size=24)
 		self.fnt30 = Font(app, size=30)
 		self.descfont = Font(app, size=app.descsize)
+		self.infofont = Font(app, size=24, flags=FONT_METRICS_BASIC|FONT_METRICS_GLYPH)
 	
 class Vidmgr(Application):
 	def handle_resolution(self):
@@ -113,7 +152,7 @@ class Vidmgr(Application):
 		global goodexts
 		
 		config = self.context.server.config
-		self.descsize = 16
+		self.descsize = 20
 		self.dispopt = DISP_NORMAL
 		self.sortopt = SORT_NORMAL
 		
@@ -175,11 +214,11 @@ class Vidmgr(Application):
 	def handle_active(self):
 		# initialize our image and font resources, put up the screen background	and the title
 		self.myimages = Images(self)
-		self.fonts = Fonts(self)
+		self.myfonts = Fonts(self)
 		self.root.set_resource(self.myimages.Background)
 		self.TitleView = View(self, height=30, width=screenWidth[self.res], ypos=titleYPos[self.res])
 		self.SubTitleView= View(self, height=20, width=screenWidth[self.res], ypos=subTitleYPos[self.res])
-		self.TitleView.set_text(TITLE, font=self.fonts.fnt30, colornum=0xffffff, flags=RSRC_VALIGN_BOTTOM)
+		self.TitleView.set_text(TITLE, font=self.myfonts.fnt30, colornum=0xffffff, flags=RSRC_VALIGN_BOTTOM)
 		
 		# attributes for shares screen
 		self.shareSelection = 0
@@ -204,8 +243,12 @@ class Vidmgr(Application):
 		# now create the details page views
 		self.createDetailsViews()
 		
-		self.PleaseWaitView = View(self, visible=False, height=66, width=66, xpos=screenWidth[self.res]/2-33, ypos=screenHeight[self.res]/2-33)
-		self.PleaseWaitView.set_resource(self.myimages.PleaseWait)
+		self.vwPleaseWait = View(self, visible=False, height=66, width=66, xpos=screenWidth[self.res]/2-33, ypos=screenHeight[self.res]/2-33)
+		self.vwPleaseWait.set_resource(self.myimages.PleaseWait)
+		xoff = (screenWidth[self.res]-infoWidth[self.res])/2
+		yoff = (screenHeight[self.res]-infoHeight[self.res])/2
+		self.vwInfo = InfoView(self, infoWidth[self.res], infoHeight[self.res],
+							xoff, yoff, self.myfonts.infofont)
 		# get things started - set up the first page
 		# if there is only 1 share - jump right to it - otherwise, put up a page of the shares
 		if len(self.share) == 1:
@@ -214,7 +257,11 @@ class Vidmgr(Application):
 			self.drawScreen()
 		else:
 			self.currentPage = PAGE_SHARES;
-			self.drawScreen();
+			self.drawScreen()
+			
+	def handle_font_info(self, font):
+		self.vwInfo.setinfogeometry(font)
+
 			
 	# handle a single remote key press - branch based on what screen is currently up				
 	def handle_key_press(self, keynum, rawcode):
@@ -229,13 +276,39 @@ class Vidmgr(Application):
 	# handle a keypress on the directory listing screen.  This screen needs to handle the situation
 	# where the directory is empty - in this case, only the left arrow if permissible		
 	def handle_key_pressList(self, keynum, rawcode):
+		index = self.listOffset + self.listSelection;
 		snd = 'updown'
 		if len(self.listing) == 0 and keynum not in [ KEY_LEFT, KEY_TIVO ]:
 			snd = 'bonk'
 		else:
-			# if I get herem either 1) there are directory entries in the listing list, or
-			# 2) the directory list is empty and the ket is KEY_LEFT
-			if keynum == KEY_DOWN:
+			# if they press the info button then we can turn on the info (metadata)
+			# display, but only if the current selection is NOT
+			# a directory AND the info display is not already up
+			if (keynum == KEY_INFO and not self.vwInfo.isVisible and not self.listing[index]['dir']):
+				meta = self.listing[index]['meta']
+				self.vwInfo.loadmetadata(meta)
+				self.vwInfo.show()
+				
+			# if the info display is up, clear the info
+			# display when the clear or left keys are hit
+			elif keynum in [ KEY_LEFT, KEY_CLEAR ] and self.vwInfo.isVisible:
+				self.vwInfo.hide()
+				
+			# if the info display is up, allow paging
+			elif keynum in [ KEY_DOWN, KEY_CHANNELDOWN ] and self.vwInfo.isVisible:
+				if not self.vwInfo.pagedown():
+					snd = 'bonk'
+					
+			elif keynum in [ KEY_UP, KEY_CHANNELUP ] and self.vwInfo.isVisible:
+				if not self.vwInfo.pageup():
+					snd = 'bonk'
+					
+			# otherwise if the info display is up, they hit an invalid key
+			elif self.vwInfo.isVisible:
+				snd = 'bonk'
+				
+			# the info diaplay is not up - handle normal navigation
+			elif keynum == KEY_DOWN:
 				if not self.ListCursorForward():
 					snd = 'bonk'
 						
@@ -282,15 +355,16 @@ class Vidmgr(Application):
 						self.listSelection = self.listSize - 1
 					
 			elif keynum in [KEY_SELECT, KEY_RIGHT]:
-				index = self.listOffset + self.listSelection;
 				if self.listing[index]['dir']:
 					# recurse into the next directory
 					self.directoryStack.append({'dir': self.currentDir, 'selection' : self.listSelection, 'offset': self.listOffset})
 					self.currentDir = self.listing[index]['path']
 					self.listSelection = 0
 					self.listOffset = 0
-					self.PleaseWaitView.set_visible(True)
+					self.vwPleaseWait.set_visible(True)
 					self.send_key(KEY_TIVO, 0)
+					# return here so the pleasewait can be displayed.  The KEY_TIVO
+					# will bring us back below
 					return
 				else:
 					# bring up the details about the selected video
@@ -302,9 +376,11 @@ class Vidmgr(Application):
 					self.detailMode = MODE_MENU
 					self.detailMenuSelection = MENU_PUSH
 					
+			# this is where we return to after the please wait icon is displayed.  We 
+			# perform the long running task and then remove the pleasewait icon
 			elif keynum == KEY_TIVO and rawcode == 0:
 				self.createListing()
-				self.PleaseWaitView.set_visible(False)
+				self.vwPleaseWait.set_visible(False)
 				
 			elif keynum == KEY_LEFT:
 				if len(self.directoryStack) == 0:
@@ -323,7 +399,7 @@ class Vidmgr(Application):
 					self.currentDir = s['dir']
 					self.listSelection = s['selection']
 					self.listOffset = s['offset']
-					self.PleaseWaitView.set_visible(True)
+					self.vwPleaseWait.set_visible(True)
 					self.send_key(KEY_TIVO, 0)
 					return
 				
@@ -394,19 +470,20 @@ class Vidmgr(Application):
 				else:
 					self.shareSelection = self.listSize - 1
 
-		# jump into the chose directory			
+		# jump into the chosen directory			
 		elif keynum in [KEY_SELECT, KEY_RIGHT]:
 			self.currentDir = ""
 			self.listSelection = 0
 			self.listOffset = 0
-			self.PleaseWaitView.set_visible(True)
+			self.vwPleaseWait.set_visible(True)
 			self.send_key(KEY_TIVO, 0)
+			return
 			
 		elif keynum == KEY_TIVO:
 			self.createListing()
 			self.currentPage = PAGE_LIST
 			self.detailMode = MODE_INFO
-			self.PleaseWaitView.set_visible(False)
+			self.vwPleaseWait.set_visible(False)
 
 			
 		elif keynum == KEY_LEFT:
@@ -427,8 +504,12 @@ class Vidmgr(Application):
 	def handle_key_pressDetail(self, keynum, rawcode):
 		snd = 'updown'	
 		if self.detailMode == MODE_DELCONFIRM:	
+			# in this mode, all we are trying to do is see if they really want to delete
+			# a file.  SInce this is a long running operation, we need to put up the
+			# display and then send outselves a message so we can actually perform the
+			# delete
 			if keynum == KEY_THUMBSUP:
-				self.PleaseWaitView.set_visible(True)
+				self.vwPleaseWait.set_visible(True)
 				self.send_key(KEY_TIVO, 0)
 				return
 			
@@ -436,7 +517,7 @@ class Vidmgr(Application):
 				self.delVideo(self.indexDetail)
 				self.sleep(2);
 				self.createListing();
-				self.PleaseWaitView.set_visible(False)
+				self.vwPleaseWait.set_visible(False)
 				
 				self.detailMode = MODE_MENU
 				if (self.indexDetail >= len(self.listing)):
@@ -456,6 +537,7 @@ class Vidmgr(Application):
 				self.detailMode = MODE_MENU
 				
 		elif self.detailMode == MODE_TIVOMENU:
+			# in this mode, they have chosen push and now we need to decide which tivo
 			if keynum == KEY_LEFT:
 				# they changed their minds about pushing - back to MODE_MENU
 				self.detailMode = MODE_MENU
@@ -518,25 +600,53 @@ class Vidmgr(Application):
 					
 			elif keynum in [ KEY_RIGHT, KEY_SELECT ]:
 				# push the video and then back to MODE_MENU
-				self.PleaseWaitView.set_visible(True)
+				self.vwPleaseWait.set_visible(True)
 				self.send_key(KEY_TIVO, 0)
 				return
 			
 			elif keynum == KEY_TIVO and rawcode == 0:
 				self.pushVideo(self.indexDetail, self.subMenuSelection, self.shareSelection+self.shareOffset)
 				self.detailMode = MODE_PUSHCONFIRM
-				self.PleaseWaitView.set_visible(False)
+				self.vwPleaseWait.set_visible(False)
 				snd = 'alert'
 			else:
 				snd = 'bonk'
 				
 		elif self.detailMode == MODE_PUSHCONFIRM:
-			# we don't care what they press
+			# in this mode, a push operation is complete - we just want them to press ant
+			# key to desmiss the message
 			self.detailMode = MODE_MENU
 				
-		# the user is choosing between PUSH and DELETE
 		else: #MODE_MENU
-			if keynum == KEY_CHANNELUP:
+			# this is the default details screen mode - basically they are choosing
+			# between PUSH and DELETE
+			
+			# first, if they press the info display and it is not already up, display it
+			if keynum == KEY_INFO and not self.vwInfo.isVisible:
+				i = self.listOffset + self.listSelection	
+				meta = self.listing[i]['meta']
+				self.vwInfo.loadmetadata(meta)
+				self.vwInfo.show()
+					
+			# if the info display is up and they press clear or left - remove it
+			elif keynum in [ KEY_LEFT, KEY_CLEAR ] and self.vwInfo.isVisible:
+				self.vwInfo.hide()
+				
+			# pagination through the info screens
+			elif keynum in [ KEY_DOWN, KEY_CHANNELDOWN ] and self.vwInfo.isVisible:
+				if not self.vwInfo.pagedown():
+					snd = 'bonk'
+					
+			elif keynum in [ KEY_UP, KEY_CHANNELUP ] and self.vwInfo.isVisible:
+				if not self.vwInfo.pageup():
+					snd = 'bonk'
+					
+			# otherwise if the info display is up, they've pressed an invalid key
+			elif self.vwInfo.isVisible:
+				snd = 'bonk'
+				
+			# normal details screen
+			elif keynum == KEY_CHANNELUP:
 				if self.ListCursorPrevVideo():
 					self.indexDetail = self.listOffset + self.listSelection	
 				else:
@@ -566,7 +676,7 @@ class Vidmgr(Application):
 					snd = 'alert'
 				else: # MENU_PUSH
 					if len(self.tivo) == 1:
-						self.PleaseWaitView.set_visible(True)
+						self.vwPleaseWait.set_visible(True)
 						self.send_key(KEY_TIVO, 1)
 						return
 					else:
@@ -577,7 +687,7 @@ class Vidmgr(Application):
 			elif keynum == KEY_TIVO and rawcode == 1:
 				self.pushVideo(self.indexDetail, 0, self.shareSelection+self.shareOffset)
 				self.detailMode = MODE_PUSHCONFIRM
-				self.PleaseWaitView.set_visible(False)
+				self.vwPleaseWait.set_visible(False)
 				snd = 'alert'
 									
 			else:
@@ -607,7 +717,7 @@ class Vidmgr(Application):
 	def drawScreenList(self):
 		off = self.listOffset
 		self.SubTitleView.set_text(self.share[self.shareSelection+self.shareOffset]['name'] + ":" + self.currentDir,
-								font=self.fonts.fnt20,
+								font=self.myfonts.fnt20,
 								colornum=0xffffff, flags=RSRC_VALIGN_BOTTOM)
 		
 		# if there are no videos in this directory, just print a message to that effect and
@@ -620,7 +730,7 @@ class Vidmgr(Application):
 				self.vwListIcon[i].clear_resource()
 			self.vwListCueTop.clear_resource();
 			self.vwListCueBot.clear_resource();
-			self.vwListText[3].set_text('No videos in this folder - press LEFT to continue', font=self.fonts.fnt20,
+			self.vwListText[3].set_text('No videos in this folder - press LEFT to continue', font=self.myfonts.fnt20,
 									colornum=0xffffff, flags=RSRC_HALIGN_LEFT);
 			self.vwListCue[3].set_resource(self.myimages.CueLeft)
 		
@@ -644,17 +754,21 @@ class Vidmgr(Application):
 						self.vwListCue[i].set_resource(self.myimages.CueUp)
 					if i == self.listSelection+1:
 						self.vwListCue[i].set_resource(self.myimages.CueDown)
-					self.vwListText[i].set_text(self.listing[i+off]['disptext'], font=self.fonts.fnt24,
+					self.vwListText[i].set_text(self.listing[i+off]['disptext'], font=self.myfonts.fnt24,
 										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
 					self.vwListIcon[i].set_resource(self.listing[i+off]['icon'])
 				else:
 					self.vwListText[i].clear_resource()
 					self.vwListIcon[i].clear_resource()
+		
+		if self.vwInfo.isVisible and self.res == RES_SD:
+			self.vwInfo.paint()
+
 					
 	# paint the shares screen - this is much like the listing screen above except that 1) it lists shares only, 
 	# and 2) we don't have to worry about it being empty because if it was empty we would have exited by now
 	def drawScreenShares(self):
-		self.SubTitleView.set_text("Shares", font=self.fonts.fnt20,
+		self.SubTitleView.set_text("Shares", font=self.myfonts.fnt20,
 									colornum=0xffffff)
 		
 		self.updateShares()
@@ -681,7 +795,7 @@ class Vidmgr(Application):
 					self.vwListCue[i].set_resource(self.myimages.CueUp)
 				if i == self.shareSelection+1:
 					self.vwListCue[i].set_resource(self.myimages.CueDown)
-				self.vwListText[i].set_text(self.share[sx]['dispname'], font=self.fonts.fnt24,
+				self.vwListText[i].set_text(self.share[sx]['dispname'], font=self.myfonts.fnt24,
 									colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
 			else:
 				self.vwListText[i].clear_resource()
@@ -713,13 +827,13 @@ class Vidmgr(Application):
 				self.vwDetailThumb.set_visible(False)
 		else:
 			meta = self.listing[self.indexDetail]['meta']
-				
+			
 			if self.res == RES_SD:
-				self.SubTitleView.set_text("", font=self.fonts.fnt20, colornum=0xffffff)
-				self.vwDetailTitle.set_text(meta['title'], font=self.fonts.fnt30,
+				self.SubTitleView.set_text("", font=self.myfonts.fnt20, colornum=0xffffff)
+				self.vwDetailTitle.set_text(meta['title'], font=self.myfonts.fnt30,
 										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
 				if 'episodeTitle' in meta:
-					self.vwDetailSubTitle.set_text(meta['episodeTitle'], font=self.fonts.fnt24,
+					self.vwDetailSubTitle.set_text(meta['episodeTitle'], font=self.myfonts.fnt24,
 										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
 				else:
 					self.vwDetailSubTitle.set_text("")
@@ -733,7 +847,7 @@ class Vidmgr(Application):
 					self.vwDetailThumb.set_visible(False)
 					
 			if 'description' in meta:
-				self.vwDetailDescription.set_text(meta['description'], font=self.fonts.descfont,
+				self.vwDetailDescription.set_text(meta['description'], font=self.myfonts.descfont,
 									colornum=0xffffff,
 									flags=RSRC_TEXT_WRAP + RSRC_HALIGN_LEFT + RSRC_VALIGN_TOP)
 			else:
@@ -741,6 +855,9 @@ class Vidmgr(Application):
 
 		self.vwDetailSubMenuCueTop.clear_resource()
 		self.vwDetailSubMenuCueBot.clear_resource()
+		
+		if self.vwInfo.isVisible:
+			self.vwInfo.paint()
 		
 		if self.detailMode == MODE_MENU:			
 			for i in range(self.subMenuSize):
@@ -758,7 +875,7 @@ class Vidmgr(Application):
 			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
 			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
 			self.vwDetailMenuText[MENU_CONFIRM].set_text('Press Thumbs-Up to Confirm',
-									font=self.fonts.fnt20,
+									font=self.myfonts.fnt20,
 									colornum=0xffffff,
 									flags=RSRC_HALIGN_LEFT)
 			self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(0)
@@ -769,7 +886,7 @@ class Vidmgr(Application):
 			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
 			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
 			self.vwDetailMenuText[MENU_CONFIRM].set_text(self.pushText,
-									font=self.fonts.fnt16,
+									font=self.myfonts.fnt16,
 									colornum=0xffffff,
 									flags=RSRC_HALIGN_LEFT)
 			self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(0)
@@ -791,7 +908,7 @@ class Vidmgr(Application):
 				tx = i + self.subMenuOffset
 				if tx < len(self.tivo):
 					self.vwDetailSubMenuText[i].set_text(self.tivo[tx]['name'],
-												font=self.fonts.fnt20,
+												font=self.myfonts.fnt20,
 												colornum=0xffffff,
 												flags=RSRC_HALIGN_LEFT)
 					if i == self.subMenuSelection:
@@ -858,7 +975,7 @@ class Vidmgr(Application):
 			self.vwDetailSubMenuBkg.append(bkg)
 			self.vwDetailSubMenuText.append(txt)
 			if i < len(self.tivo):
-				self.vwDetailSubMenuText[i].set_text(self.tivo[i]['name'], font=self.fonts.fnt20,
+				self.vwDetailSubMenuText[i].set_text(self.tivo[i]['name'], font=self.myfonts.fnt20,
 										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
 
 		self.vwDetailSubMenuCueTop = View(self, height=32, width=32, ypos=detailSubCueTopY[self.res],
@@ -871,12 +988,13 @@ class Vidmgr(Application):
 		
 		self.vwDetailMenuBkg[2].set_transparency(1) # unused for now
 		self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
-		self.vwDetailMenuText[MENU_PUSH].set_text('Push Video', font=self.fonts.fnt20,
+		self.vwDetailMenuText[MENU_PUSH].set_text('Push Video', font=self.myfonts.fnt20,
 									colornum=0xffffff,
 									flags=RSRC_HALIGN_LEFT)
-		self.vwDetailMenuText[MENU_DELETE].set_text('Delete Video', font=self.fonts.fnt20,
+		self.vwDetailMenuText[MENU_DELETE].set_text('Delete Video', font=self.myfonts.fnt20,
 									colornum=0xffffff,
 									flags=RSRC_HALIGN_LEFT)
+		
 	def ListCursorForward(self):
 		if self.listSelection+self.listOffset < len(self.listing)-1:
 			if self.listSelection < self.listSize-1:
@@ -1200,4 +1318,162 @@ class Vidmgr(Application):
 		
 		return thumb
 
+class InfoView(View):
+	def __init__(self, app, width, height, xpos, ypos, font):
+		View.__init__(self, app, width=width, height=height, xpos=xpos, ypos=ypos, visible=False)
+		self.set_resource(app.myimages.Info)
+		self.labelView = []
+		self.dataView = []
+		self.linesPerPage = 0
+		self.displayOffset = 0
+		self.height = height
+		self.width = width
+		self.font = font
+		self.app = app
+		self.hide()
+		
+	def setinfogeometry(self, fontinfo):
+		self.fi = fontinfo
+		self.lineHeight = int(fontinfo.height)
+		self.linesPerPage = 0
+		self.datawidth = int(self.width * 0.69)
+		y = 10
+		lblwidth = int(self.width*0.3)
+		while (y + self.lineHeight <= self.height - 2):
+			lbl = View(self.app, parent=self, width=lblwidth, height=self.lineHeight, xpos=10, ypos=y)
+			data = View(self.app, parent=self, width=self.datawidth, height=self.lineHeight, xpos=10+lblwidth, ypos=y)
+			self.labelView.append(lbl)
+			self.dataView.append(data)
+			y = y + self.lineHeight
+			self.linesPerPage = self.linesPerPage + 1
+		self.vwUp = View(self.app, parent=self, width=32, height=16, xpos=lblwidth-24, ypos=2)
+		self.vwUp.set_resource(self.app.myimages.InfoUp)
+		self.vwDown = View(self.app, parent=self, width=32, height=16, xpos=lblwidth-24, ypos=self.height-18)
+		self.vwDown.set_resource(self.app.myimages.InfoDown)
+
+		self.clear()
+	
+	def show(self):
+		self.isVisible = True
+		self.set_visible(True)
+		
+	def hide(self):
+		self.isVisible = False
+		self.set_visible(False)
+		
+	def clear(self):
+		self.dataContent = []
+		self.labelContent = []
+		self.lineCount = 0;
+		self.displayOffset = 0;
+		
+	def addline(self, label, data):
+		if label in metaXlate:
+			lbl = metaXlate[label]
+		else:
+			lbl = label
+	
+		if type(data) is list:
+			dstring = ', '.join(data)
+		else:
+			dstring = data
+			
+		spacewidth = self.measure(" ")
+		newstring = ""
+		nslength = 0
+		for w in dstring.split(' '):
+			wlen = self.measure(w)
+			if nslength != 0:
+				wslen = wlen + spacewidth
+			else:
+				wslen = wlen
+			if nslength + wslen < self.datawidth-5:
+				if nslength != 0:
+					newstring = newstring + " "
+				newstring = newstring + w
+				nslength = nslength + wslen
+			else:
+				self.labelContent.append(lbl)
+				self.dataContent.append(newstring)
+				self.lineCount = self.lineCount + 1
+				newstring = w
+				nslength = wlen
+				lbl = ""
+		if nslength != 0:
+			self.labelContent.append(lbl)
+			self.dataContent.append(newstring)
+			self.lineCount = self.lineCount + 1
+		
+	def measure(self, string):
+		if len(string) == 0: return(0)
+		
+		fi = self.fi
+		width = 0
+		for c in string:
+			info = fi.glyphs.get(c, (0, 0))
+			width += info[0]	# advance
+		if info[1] > info[0]:   # bounding
+			width += (info[1] - info[0])
+		return int(width)
+
+	def loadmetadata(self, meta):
+		self.clear()
+		if meta == None: return
+		
+		for m in orderedMeta:
+			if m in meta:
+				self.addline(m, meta[m])
+
+		for m in meta:
+			if m not in orderedMeta and m not in metaIgnore:
+				self.addline(m, meta[m])
+		
+	def paint(self):
+		if self.displayOffset == 0:
+			self.vwUp.set_visible(False)
+		else:
+			self.vwUp.set_visible(True)
+			
+		if self.displayOffset + self.linesPerPage >= self.lineCount:
+			self.vwDown.set_visible(False)
+		else:
+			self.vwDown.set_visible(True)
+			
+		i = 0
+		while i < self.linesPerPage:
+			n = self.displayOffset + i
+			if n >= self.lineCount:
+				self.labelView[i].set_text("")
+				self.dataView[i].set_text("")
+			else:
+				self.labelView[i].set_text(self.labelContent[n],
+					font=self.font,
+					colornum=0xffffff,
+					flags=RSRC_HALIGN_LEFT)
+				self.dataView[i].set_text(self.dataContent[n],
+					font=self.font,
+					colornum=0xffffff,
+					flags=RSRC_HALIGN_LEFT)
+			i = i + 1
+	
+	def pagedown(self):
+		if self.displayOffset + self.linesPerPage >= self.lineCount:
+			return False
+		
+		self.displayOffset = self.displayOffset + self.linesPerPage
+		if self.displayOffset + self.linesPerPage > self.lineCount:
+			self.displayOffset = self.lineCount - self.linesPerPage
+		self.paint()
+		return True
+	
+	def pageup(self):
+		if self.displayOffset == 0:
+			return False;
+		
+		self.displayOffset = self.displayOffset - self.linesPerPage
+		if self.displayOffset < 0:
+			self.displayOffset = 0
+		self.paint()
+		return True
+		
 
