@@ -1,5 +1,9 @@
 PyTivo Video Manager
 
+version 0.4b
+
+Increased list size on HD screen from 12 to 14
+
 version 0.4
 
 Added an info page that pops up when you press the info button and displays all the metadata about the current video

@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.4'
+version = '0.4b'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 orderedMeta = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
 metaXlate = { 'title': 'Title',
@@ -75,7 +75,7 @@ screenHeight = [ 480, 720 ]
 infoHeight = [ 420, 600 ]
 infoWidth = [ 580, 1160 ]
 listViewWidth = [ 640, 640 ]
-listSize = [ 8, 12 ]
+listSize = [ 8, 14 ]
 titleYPos = [ 24, 36 ]
 subTitleYPos = [ 56, 84 ]
 listYStart = [ 81, 121 ]
