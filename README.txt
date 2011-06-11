@@ -1,5 +1,9 @@
 PyTivo Video Manager
 
+Version 0.4c
+
+Adjusted thumbnail position and calculated description height based in descsize so that only full lines appear
+
 version 0.4b
 
 Increased list size on HD screen from 12 to 14

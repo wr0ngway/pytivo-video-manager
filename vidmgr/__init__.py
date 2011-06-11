@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.4b'
+version = '0.4c'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 orderedMeta = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
 metaXlate = { 'title': 'Title',
@@ -85,7 +85,7 @@ listXIcon = [ 60, 90 ]
 listXCue = [ 20, 30 ]
 subMenuSize = [ 4, 4 ]
 detailViewWidth = [ 640, 640 ]
-detailDescHeight = [ 120, 130 ]
+detailDescHeight = [ 120, 140 ]
 detailDescWidth = [ 540, 590 ]
 detailDescXPos = [ 60, 10 ]
 detailDescYPos = [ 146, 121 ]
@@ -184,6 +184,10 @@ class Vidmgr(Application):
 						print "Invalid sort option - assuming default value"
 
 		self.res = RES_SD
+		# adjust the description height to be a multiple of the font size
+		for i in [ RES_SD, RES_HD ]:
+			n = int(detailDescHeight[i]/self.descsize)
+			detailDescHeight[i] = n * self.descsize
 
 		# get the tivo information out of the startup comfig file.  For each tivo, we need to know:
 		# tivox.name - the user friendly name and
@@ -953,7 +957,7 @@ class Vidmgr(Application):
 		self.vwDetailSubMenuText = []
 		
 		if self.res == RES_HD:
-			self.vwDetailThumb = View(self, width=320, height=444, xpos=10, ypos=250, parent=self.vwDetail)
+			self.vwDetailThumb = View(self, width=320, height=444, xpos=10, ypos=270, parent=self.vwDetail)
 
 		startymenu = detailMenuYPos[self.res]
 		xmenu = detailMenuXPos[self.res]
