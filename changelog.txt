@@ -1,0 +1,106 @@
+PyTivo Video Manager - change log
+
+Version 0.5a 
+
+moved metaignore and metafirst into config file so you can specify which metadata you would like
+to ignore and which you would liek to see first
+
+Added logic to show folder.jpg as the thumbnail for a directory if it exists in that directory or in the
+subtending .meta directory
+
+Version 0.5
+
+-added the ability to specify deleteallowed=False in the config file to prevent file deletions
+-formalized the skin concept.  Now skins are kept in separate directories under the skins directory, and
+the directory you want to use for a skin is named in the config file e.g. skin=blue.  ALso, changed the
+image loading logic such that if the HD version of an image does not exist, then it will use the SD version
+of that file.  This solved the situation where there were duplicate files just to satisfy a naming convention.
+- moved metadata.py into the vidmgr directory.  It didn't belong up in the pyhme directory and I never liked
+having it up there.  I was too unfamiliar with python to know how to specify to look in the vidmgr subdirectory
+to find the file (it turns out I didn't need to do anything - python found it!!)
+- split README.txt into README.txt and changelog.txt.  changelog.txt will contain the change history, and README
+will be maintained as the always current description of the application
+- fixed the positioning bug in 0.4c where the "Push" button was over top of the bottom line of the description
+
+Version 0.4c
+
+Adjusted thumbnail position and calculated description height based in descsize so that only full lines appear
+
+version 0.4b
+
+Increased list size on HD screen from 12 to 14
+
+version 0.4
+
+Added an info page that pops up when you press the info button and displays all the metadata about the current video
+
+version 0.3c
+
+Fixed bug when navigating OUT of an empty directory and bug where share list was not being updated when a video is deleted
+
+version 0.3b
+
+Added 1) share and directory listings show the number of videos and directories contained within them, and 2) added a "Please Wait" icon
+during length operations - currently this includes:  building a directory listing, pushing a video, and deleting a video.
+
+version 0.3a
+
+Removed the clear key - it no longer exits the app. 
+Removed calls to unicode from metadata.py
+Added functionality to advance key - if pressed while at the end of a list, it will move to the start of the list.
+
+version 0.3
+
+Allow various sorting and display options:
+display=file - only display the file name
+       =episodetitle - only display the episode name
+       =episodenumtitle = display both the episode number and name
+if not specified (or if an invalid option is specified) then it will display title+episode title
+If you specify metadata that does not exist, vidmgr will use the title and/or the file name in order to display something
+
+sort=file - sort the screen listing based on the file name only
+    =episodenumber - sort based on the episode number (if present) - NOTE - this is a character string comparison - not numeric
+If not specified (or if an invalid option is specified) sorting will be based on title and/or file name
+Again, if the specified meta data does not exist, a sort key will be built from whatever is available using title and/or filename
+
+Also in version 0.3 - fixed the issue reported by reneg where shares on the second and subsequent pages of the shares listing were wrong
+
+
+version 0.2g 
+
+When deleting a video, if the meta file was in the .meta directory, it was not
+deleted.  Also, the jpg artwork file was not deleted either.  Both of these 
+have been fixed
+
+version 0.2f
+
+Version 0.2f properly implements what 0.2e was supposed to do
+
+Change with 0.2e
+
+Allow artwork to be placed in the .meta subdirectory
+
+version 0.2d
+
+Changes with 0.2d
+
+Ignore directories beginning with . - this allows .meta directories for holding pytivo meta data
+
+Changes with 0.2c
+
+Added descsize option to alter size of description font
+
+Changes with 0.2b
+
+Added logic to metadata.py to strip non-ascii chars from meta data
+
+Changes with version 0.2
+
+Support HD resolution - this allows addition of screen capture/art work.  Also, tried to pay more
+attention to TV safe area - although this is hard for HD since the simulator doesn't support HD.
+Added exts option to config file.
+
+
+
+
+

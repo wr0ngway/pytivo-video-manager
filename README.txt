@@ -76,6 +76,12 @@ sort=value
    file - sort based on the filename
    normal - (default) sorts based on the program title and episode title
 
+metafirst = title seriesTitle episodeTitle description
+metaignore = isEpisode isEpisodic
+   these two items determine which metadata is displayed first in the info screen and which is ignored. 
+   Spelling and case are significant - the name must match exactly.  The default values are those
+   values given above
+
 
 	c) You need to tell vidmgr about your Tivos.  For each tivo, you need to specify the name and
 the TSN.  The format for this is:
@@ -122,7 +128,7 @@ Usage
 =====
 
 Vidmgr presents a directory tree to you.  You can step into and out of directories using the normal
-tivo navigation keys.  The directory tree is rooted at ths list of shares, unless there is only 1 share
+tivo navigation keys.  The directory tree is rooted at the list of shares, unless there is only 1 share
 in which case it is rooted at the topmost directory of that share.
 
 In HD mode, vidmgr will also show video artwork on the right hand side of the screen.  Vidmgr looks for
@@ -131,8 +137,9 @@ The view into which this graphic is placed is 320 pixels wide by 44 pixels high.
 those dimensions it will be cropped.
 
 Once you choose a video file, you will be shown some of the metadata associated with that file,
-and then have two options - push or delete.  In HD mode, this detail will be on the right side of the 
-screen as you navigate through the directories - it is not on a separate screen
+and then have two options - push or delete (delete can be disabled - see configuration above).  In
+HD mode, this detail will be on the right side of the screen as you navigate through the directories - it
+is not on a separate screen
 
 If you choose delete, you will be asked to press thumbs-up to confirm and when you do, the file and
 its associated metadata file will be deleted.  If you press ANYTHING other than thumbs-up, the
@@ -142,3 +149,9 @@ If you choose push and you only have 1 tivo, then it will simply initiate a push
 give you a confirmation message.  If you have multiple tivos, you need to choose the one you want to
 push to from the provided list.  After choosing, vidmgr will initiate the push and give you the
 confirmation message.  The confirmation message can be dismissed with ANY keypress
+
+At any time on any list or on a details screen, you can press the info button to see a complete
+list of the metadata.  You can control which metadata items appear at the front of this display
+and which are ignored (see configuration above).  On the info display, you can press left or clear
+to return to the screen you cane from.  If the information does not fit on one page, you will see
+paging cues and you can use either up/down or channel up/down to traverse the pages.

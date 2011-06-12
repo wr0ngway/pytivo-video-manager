@@ -8,9 +8,9 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.5'
+version = '0.5a'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
-orderedMeta = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
+metaFirst = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
 metaXlate = { 'title': 'Title',
 			'originalAirDate': 'Original Air Date',
 			'time': 'Time',
@@ -160,7 +160,7 @@ class Vidmgr(Application):
 		return self.resolutions[0]
 	
 	def startup(self):
-		global goodexts
+		global goodexts, metaFirst, metaIgnore
 		
 		config = self.context.server.config
 		self.descsize = 20
@@ -173,6 +173,10 @@ class Vidmgr(Application):
 			for opt, value in config.items('vidmgr'):
 				if opt == 'exts':
 					goodexts = value.split()
+				elif opt == 'metaignore':
+					metaIgnore = value.split()
+				elif opt == 'metafirst':
+					metaFirst = value.split()
 				elif opt == 'descsize':
 					self.descsize = int(value)
 				elif opt == 'skin':
@@ -849,7 +853,11 @@ class Vidmgr(Application):
 			self.vwDetailSubTitle.set_text("")
 			self.vwDetailDescription.set_text("")
 			if self.res == RES_HD:
-				self.vwDetailThumb.set_visible(False)
+				if self.listing[self.indexDetail]['thumb']:
+					self.vwDetailThumb.set_visible(True)
+					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP)
+				else:
+					self.vwDetailThumb.set_visible(False)
 		else:
 			meta = self.listing[self.indexDetail]['meta']
 			
@@ -1255,9 +1263,11 @@ class Vidmgr(Application):
 			if os.path.isdir(fullpath):
 				if name.startswith('.'): continue
 				dispname = name + ' (' + str(self.countFiles(fullpath)) + ')'
+				thumb = self.getDirThumb(fullpath)
 				llist.append({'sorttext': name, 'disptext': dispname,
 								'icon': self.myimages.IconFolder, 
 								'path': relpath,
+								'thumb': thumb,
 								'dir': True})
 			else:
 				if os.path.splitext(name)[1].lower() in goodexts:
@@ -1336,11 +1346,27 @@ class Vidmgr(Application):
 		return (sorttext, disptext)
 		
 	def getThumb(self, fn, dir, name, meta):
+		if self.res == RES_SD:
+			return None
+		
 		thumb = None
 		for tfn in [ fn + '.jpg',
 				os.path.join(dir, '.meta', name + '.jpg'),
 				os.path.join(dir, 'folder.jpg'),
 				os.path.join(dir, '.meta', 'folder.jpg') ]:
+			if os.path.exists(tfn):
+				thumb = Image(self, tfn)
+				break
+		
+		return thumb
+	
+	def getDirThumb(self, fn):
+		if self.res == RES_SD:
+			return None
+		
+		thumb = None
+		for tfn in [ os.path.join(fn, 'folder.jpg'),
+				os.path.join(fn, '.meta', 'folder.jpg') ]:
 			if os.path.exists(tfn):
 				thumb = Image(self, tfn)
 				break
@@ -1449,12 +1475,12 @@ class InfoView(View):
 		self.clear()
 		if meta == None: return
 		
-		for m in orderedMeta:
+		for m in metaFirst:
 			if m in meta:
 				self.addline(m, meta[m])
 
 		for m in meta:
-			if m not in orderedMeta and m not in metaIgnore:
+			if m not in metaFirst and m not in metaIgnore:
 				self.addline(m, meta[m])
 		
 	def paint(self):
