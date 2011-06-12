@@ -1,87 +1,6 @@
-PyTivo Video Manager
+PyTivo Video Manager - README.txt
 
-Version 0.4c
-
-Adjusted thumbnail position and calculated description height based in descsize so that only full lines appear
-
-version 0.4b
-
-Increased list size on HD screen from 12 to 14
-
-version 0.4
-
-Added an info page that pops up when you press the info button and displays all the metadata about the current video
-
-version 0.3c
-
-Fixed bug when navigating OUT of an empty directory and bug where share list was not being updated when a video is deleted
-
-version 0.3b
-
-Added 1) share and directory listings show the number of videos and directories contained within them, and 2) added a "Please Wait" icon
-during length operations - currently this includes:  building a directory listing, pushing a video, and deleting a video.
-
-version 0.3a
-
-Removed the clear key - it no longer exits the app. 
-Removed calls to unicode from metadata.py
-Added functionality to advance key - if pressed while at the end of a list, it will move to the start of the list.
-
-version 0.3
-
-Allow various sorting and display options:
-display=file - only display the file name
-       =episodetitle - only display the episode name
-       =episodenumtitle = display both the episode number and name
-if not specified (or if an invalid option is specified) then it will display title+episode title
-If you specify metadata that does not exist, vidmgr will use the title and/or the file name in order to display something
-
-sort=file - sort the screen listing based on the file name only
-    =episodenumber - sort based on the episode number (if present) - NOTE - this is a character string comparison - not numeric
-If not specified (or if an invalid option is specified) sorting will be based on title and/or file name
-Again, if the specified meta data does not exist, a sort key will be built from whatever is available using title and/or filename
-
-Also in version 0.3 - fixed the issue reported by reneg where shares on the second and subsequent pages of the shares listing were wrong
-
-
-version 0.2g 
-
-When deleting a video, if the meta file was in the .meta directory, it was not
-deleted.  Also, the jpg artwork file was not deleted either.  Both of these 
-have been fixed
-
-version 0.2f
-
-Version 0.2f properly implements what 0.2e was supposed to do
-
-Change with 0.2e
-
-Allow artwork to be placed in the .meta subdirectory
-
-version 0.2d
-
-Changes with 0.2d
-
-Ignore directories beginning with . - this allows .meta directories for holding pytivo meta data
-
-Changes with 0.2c
-
-Added descsize option to alter size of description font
-
-Changes with 0.2b
-
-Added logic to metadata.py to strip non-ascii chars from meta data
-
-Changes with version 0.2
-
-Support HD resolution - this allows addition of screen capture/art work.  Also, tried to pay more
-attention to TV safe area - although this is hard for HD since the simulator doesn't support HD.
-Added exts option to config file.
-
-
-
-
-
+see changelog.txt for a history of changes
 
 what it is
 ==========
@@ -92,7 +11,7 @@ can be made from your easy chair with your tivo remote.  Pushing allows videos t
 compatible MP4 format to be transferred as is - saving time and space - instead of the transcoding
 that a pull will always cause.  vidmgr can also be used to delete videos from your library.
 
-vidmgr is a TiVo HME application designed to operate under wmcbrine's pyhme
+vidmgr is a TiVo HME application designed to operate under wmcbrine's hme for python
 framework.  It is NOT a stand-alone application.  Please install the pyhme package and make sure it
 is running before you install vidmgr.
 
@@ -108,13 +27,14 @@ installation/setup
 If you've gotten this far, you must want to really install this.  It's very simple:
 
 1. Go to the directory where you have pyhme installed.  There should be a lot of subdirectories here,
-one per application.  Create a new directroy here named "vidmgr"
+one per application.  Create a new directory here named "vidmgr"
 
-2. Copy the contents of the vidmgr directory from this package into this new directory.  This should
-include __init__.py and a bunch of .png files
+2. Copy the contents of the vidmgr directory tree from this package into this new directory.  This should
+include __init__.py metadata.py and a directory named skins.  Within the skins directory, there will be a
+directory named orig and a directory named blue.  Each of these will have a bunch of .png files.   BTW,
+metadata.py is an extract of the same named file that is part of pytivo.  I can't take the credit for this code.
 
-3. Copy metadata.py and config.merge from this package into the pyhme main directory.  BTW - metadata.py
-is an extract of the same named file that is part of pytivo.  I can't take the credit for this code.
+3. Copy config.merge from this package into the pyhme main directory. 
 
 4. Configure - you will need to merge the config.merge file that was delivered with this package with
 your config.ini file that you are currently using.  There are three areas you need to pay attention to:  
@@ -124,13 +44,37 @@ the hmeserver will start all apps that it finds.  If you do, then it will only s
 So if you do have this line and you do want to run vidmgr, add the word "vidmgr" to this line - no quotes
 or commas or other punctuation.
 
-	b) you can specify various vidmgr options:  specify the file extensions that vidmgr will pay
-attention to with the exts option.  By default this is .mpg, .mp4, .wmv, and .avi.  You can also
-specify the size of the font used for descriptive text - by default 16.  All of this is done by
-putting entries in the [vidmgr] section of the config.ini as follows:
+	b) you can specify various vidmgr options by putting entries in the [vidmgr] section of the config.ini
+as follows:
+
 [vidmgr]
 exts=.mpg .mp4 .avi .wmv .m4v
-descsize=16
+
+   this names the file extensions you are interested in
+      
+descsize=20
+   this gives the font point size that will be used for the description text.  20 is the default
+   
+skin=name
+   this is the name of the directory under skins that contains all of the png files that are used
+   to draw the screen.  default is "orig", although the package is also shipped with a "blue" skin
+   
+deleteallowed=true
+   this determines whether or not deletion of videos is permitted.  Default is true, set to false
+   if you do not want this capability
+   
+display=value
+   determines what information is displayed about videos in the various lists.  allowable values are
+   episodetitle  - displays only the episode title
+   episodenumtitle - displays the episode number followed by the title
+   file - simply displays the filename
+   normal - (default) displays program title followed by episode title
+   
+sort=value
+   determines how listings are sorted:
+   episodenumber - sort based on episode number - not this is a string sort - not a numeric sort
+   file - sort based on the filename
+   normal - (default) sorts based on the program title and episode title
 
 
 	c) You need to tell vidmgr about your Tivos.  For each tivo, you need to specify the name and

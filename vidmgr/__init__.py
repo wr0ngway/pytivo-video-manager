@@ -8,7 +8,7 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.4c'
+version = '0.5'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 orderedMeta = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
 metaXlate = { 'title': 'Title',
@@ -90,7 +90,7 @@ detailDescWidth = [ 540, 590 ]
 detailDescXPos = [ 60, 10 ]
 detailDescYPos = [ 146, 121 ]
 detailViewXPos = [ 0, 640 ]
-detailMenuYPos = [ 270, 250 ]
+detailMenuYPos = [ 270, 270 ]
 detailMenuXPos = [ 70, 340 ]
 detailSubMenuYPos = [ 270, 442 ]
 detailSubMenuXPos = [ 330, 340 ]
@@ -108,22 +108,33 @@ else:
 	
 class Images:
 	def __init__(self, app):
-		suffix = ""
-		if (app.res == RES_HD):
-			suffix = "HD"
+		self.Background  = self.loadimage(app, 'background')
+		self.CueUp       = self.loadimage(app, 'cueup')
+		self.CueDown     = self.loadimage(app, 'cuedown')
+		self.CueLeft     = self.loadimage(app, 'cueleft')
+		self.HiLite      = self.loadimage(app, 'hilite')
+		self.MenuBkg     = self.loadimage(app, 'menubkg')
+		self.IconFolder  = self.loadimage(app, 'folder')
+		self.IconVideo   = self.loadimage(app, 'video')
+		self.PleaseWait  = self.loadimage(app, 'pleasewait')
+		self.Info        = self.loadimage(app, 'info')
+		self.InfoUp      = self.loadimage(app, 'infoup')
+		self.InfoDown    = self.loadimage(app, 'infodown')
+	
+	def loadimage(self, app, name):
+		if app.res == RES_HD:
+			fn = os.path.join(p, 'skins', app.skin, name + "HD.png")
+			if os.path.exists(fn):
+				return Image(app, fn)
+
+		fn = os.path.join(p, 'skins', app.skin, name + ".png")
+		if os.path.exists(fn):
+			return Image(app, fn)
+		
+		print "image '" + name + "' missing for skin '" + app.skin + "'"
+		self.active = False
+		return None
 			
-		self.Background = Image(app, os.path.join(p, 'background' + suffix + '.png'))
-		self.CueUp      = Image(app, os.path.join(p, 'cueup' + suffix + '.png'))
-		self.CueDown    = Image(app, os.path.join(p, 'cuedown' + suffix + '.png'))
-		self.CueLeft    = Image(app, os.path.join(p, 'cueleft' + suffix + '.png'))
-		self.HiLite     = Image(app, os.path.join(p, 'hilite' + suffix + '.png'))
-		self.MenuBkg    = Image(app, os.path.join(p, 'menubkg' + suffix + '.png'))
-		self.IconFolder = Image(app, os.path.join(p, 'folder' + suffix + '.png'))
-		self.IconVideo  = Image(app, os.path.join(p, 'video' + suffix + '.png'))
-		self.PleaseWait  = Image(app, os.path.join(p, 'pleasewait' + suffix + '.png'))
-		self.Info  = Image(app, os.path.join(p, 'info' + suffix + '.png'))
-		self.InfoUp  = Image(app, os.path.join(p, 'infoup' + suffix + '.png'))
-		self.InfoDown  = Image(app, os.path.join(p, 'infodown' + suffix + '.png'))
 
 class Fonts:
 	def __init__(self, app):
@@ -153,6 +164,8 @@ class Vidmgr(Application):
 		
 		config = self.context.server.config
 		self.descsize = 20
+		self.skin = "orig"
+		self.deleteallowed = True
 		self.dispopt = DISP_NORMAL
 		self.sortopt = SORT_NORMAL
 		
@@ -162,6 +175,11 @@ class Vidmgr(Application):
 					goodexts = value.split()
 				elif opt == 'descsize':
 					self.descsize = int(value)
+				elif opt == 'skin':
+					self.skin = value
+				elif opt == 'deleteallowed':
+					if value.lower() == "false":
+						self.deleteallowed = False
 				elif opt == 'display':
 					if (value == 'episodetitle'):
 						self.dispopt = DISP_EPTITLE
@@ -239,7 +257,7 @@ class Vidmgr(Application):
 		
 		# attributes for the details page		
 		self.indexDetail = 0
-		self.detailMenuSelection = 0
+		self.detailMenuSelection = MENU_PUSH
 		self.detailMode = MODE_INFO
 		self.subMenuSelection = 0
 		self.subMenuOffset = 0
@@ -670,7 +688,10 @@ class Vidmgr(Application):
 				self.detailMode = MODE_INFO
 				
 			elif keynum in [KEY_UP, KEY_DOWN]:
-				self.detailMenuSelection = 1 - self.detailMenuSelection
+				if self.deleteallowed:
+					self.detailMenuSelection = 1 - self.detailMenuSelection
+				else:
+					snd = 'bonk'
 					
 			elif keynum in [KEY_RIGHT, KEY_SELECT]:
 				# act on their choice - either go into MODE_DELCONFIRM or MODE_TIVOMENU
@@ -995,10 +1016,14 @@ class Vidmgr(Application):
 		self.vwDetailMenuText[MENU_PUSH].set_text('Push Video', font=self.myfonts.fnt20,
 									colornum=0xffffff,
 									flags=RSRC_HALIGN_LEFT)
-		self.vwDetailMenuText[MENU_DELETE].set_text('Delete Video', font=self.myfonts.fnt20,
+		if self.deleteallowed:
+			self.vwDetailMenuText[MENU_DELETE].set_text('Delete Video', font=self.myfonts.fnt20,
 									colornum=0xffffff,
 									flags=RSRC_HALIGN_LEFT)
-		
+		else:
+			self.vwDetailMenuText[MENU_DELETE].set_visible(False)
+			self.vwDetailMenuBkg[MENU_DELETE].set_visible(False)
+	
 	def ListCursorForward(self):
 		if self.listSelection+self.listOffset < len(self.listing)-1:
 			if self.listSelection < self.listSize-1:
