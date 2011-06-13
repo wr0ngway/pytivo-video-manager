@@ -8,9 +8,11 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.5a'
+version = '0.5b'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 metaFirst = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
+metaSpace = []
+metaIgnore = [ 'isEpisode', 'isEpisodic' ]
 metaXlate = { 'title': 'Title',
 			'originalAirDate': 'Original Air Date',
 			'time': 'Time',
@@ -41,7 +43,8 @@ metaXlate = { 'title': 'Title',
 			'vActor': 'Actor',
 			'vWriter': 'Writer',
 			}
-metaIgnore = [ 'isEpisode', 'isEpisodic' ]
+
+infoLabelPercent = 30
 
 
 PAGE_SHARES = 0
@@ -160,7 +163,7 @@ class Vidmgr(Application):
 		return self.resolutions[0]
 	
 	def startup(self):
-		global goodexts, metaFirst, metaIgnore
+		global goodexts, metaFirst, metaIgnore, metaSpace, infoLabelPercent
 		
 		config = self.context.server.config
 		self.descsize = 20
@@ -177,8 +180,16 @@ class Vidmgr(Application):
 					metaIgnore = value.split()
 				elif opt == 'metafirst':
 					metaFirst = value.split()
+				elif opt == 'metaspace':
+					metaSpace = value.split()
 				elif opt == 'descsize':
 					self.descsize = int(value)
+				elif opt == 'infolabelpercent':
+					n = int(value)
+					if n < 10 or n > 70:
+						print "Error in config - infolabelpercent must be between 10 and 70"
+					else:
+						infoLabelPercent = n
 				elif opt == 'skin':
 					self.skin = value
 				elif opt == 'deleteallowed':
@@ -249,12 +260,14 @@ class Vidmgr(Application):
 		# attributes for shares screen
 		self.shareSelection = 0
 		self.shareOffset = 0
+		self.loadShareThumbs()
 		
 		# attributes for listing page
 		self.listSize = listSize[self.res]
 		self.listOffset = 0
 		self.listSelection = 0
 		self.currentDir = ""
+		self.listing = []
 		self.directoryStack = []
 		# now create the listing page (and shares page) views
 		self.createListingViews()
@@ -730,6 +743,7 @@ class Vidmgr(Application):
 		if self.currentPage == PAGE_LIST:
 			self.drawScreenList()
 			if self.res == RES_HD:
+				self.detailMode = MODE_INFO
 				self.drawScreenDetail()
 				self.vwDetail.set_visible(True)
 		elif self.currentPage == PAGE_DETAIL:
@@ -739,7 +753,9 @@ class Vidmgr(Application):
 		else: # PAGE_SHARES
 			self.drawScreenShares()
 			if self.res == RES_HD:
-				self.vwDetail.set_visible(False)
+				self.detailMode = MODE_INFO
+				self.drawScreenDetail()
+				self.vwDetail.set_visible(True)
 
 	# draw the listing screen - this is the main screen that the user will be interacting with - this
 	# allows browsing through the directories	
@@ -848,7 +864,17 @@ class Vidmgr(Application):
 		else:
 			self.vwDetailCueBot.set_resource(self.myimages.CueDown)
 			
-		if len(self.listing) == 0 or self.listing[self.indexDetail]['dir']:
+		if self.currentPage == PAGE_SHARES:
+			self.vwDetailTitle.set_text("")
+			self.vwDetailSubTitle.set_text("")
+			self.vwDetailDescription.set_text("")
+			if self.res == RES_HD:
+				if self.share[self.shareOffset+self.shareSelection]['thumb']:
+					self.vwDetailThumb.set_visible(True)
+					self.vwDetailThumb.set_resource(self.share[self.shareOffset+self.shareSelection]['thumb'], flags=RSRC_VALIGN_TOP)
+				else:
+					self.vwDetailThumb.set_visible(False)
+		elif len(self.listing) == 0 or self.listing[self.indexDetail]['dir']:
 			self.vwDetailTitle.set_text("")
 			self.vwDetailSubTitle.set_text("")
 			self.vwDetailDescription.set_text("")
@@ -1178,6 +1204,10 @@ class Vidmgr(Application):
 					pyconfig.has_option(section, 'path')):
 					path = pyconfig.get(section, 'path')
 					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
+				
+	def loadShareThumbs(self):
+		for share in self.share:
+			share['thumb'] = self.getDirThumb(share['path'])
 					
 	def updateShares(self):
 		for share in self.share:
@@ -1391,9 +1421,9 @@ class InfoView(View):
 		self.fi = fontinfo
 		self.lineHeight = int(fontinfo.height)
 		self.linesPerPage = 0
-		self.datawidth = int(self.width * 0.69)
+		lblwidth = int(self.width * infoLabelPercent / 100.0)
+		self.datawidth = int(self.width * (100.0-infoLabelPercent) / 100.0)
 		y = 10
-		lblwidth = int(self.width*0.3)
 		while (y + self.lineHeight <= self.height - 2):
 			lbl = View(self.app, parent=self, width=lblwidth, height=self.lineHeight, xpos=10, ypos=y)
 			data = View(self.app, parent=self, width=self.datawidth, height=self.lineHeight, xpos=10+lblwidth, ypos=y)
@@ -1457,6 +1487,11 @@ class InfoView(View):
 		if nslength != 0:
 			self.labelContent.append(lbl)
 			self.dataContent.append(newstring)
+			self.lineCount = self.lineCount + 1
+			
+		if label in metaSpace:
+			self.labelContent.append("")
+			self.dataContent.append("")
 			self.lineCount = self.lineCount + 1
 		
 	def measure(self, string):

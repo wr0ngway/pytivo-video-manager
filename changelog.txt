@@ -1,9 +1,16 @@
 PyTivo Video Manager - change log
 
-Version 0.5a 
+*Version 0.5b 6/13/11
+
+- extended the display of thumbnails for directories to include shares as well
+- added metaspace to the config file to indicate if a blank line should be added to the display after
+a particular item
+- added infolabelpercent to configuration to specify the width of the label on the info screen as a percent
+
+Version 0.5a 6/12/11
 
 moved metaignore and metafirst into config file so you can specify which metadata you would like
-to ignore and which you would liek to see first
+to ignore and which you would like to see first
 
 Added logic to show folder.jpg as the thumbnail for a directory if it exists in that directory or in the
 subtending .meta directory
@@ -26,30 +33,30 @@ Version 0.4c
 
 Adjusted thumbnail position and calculated description height based in descsize so that only full lines appear
 
-version 0.4b
+Version 0.4b
 
 Increased list size on HD screen from 12 to 14
 
-version 0.4
+Version 0.4
 
 Added an info page that pops up when you press the info button and displays all the metadata about the current video
 
-version 0.3c
+Version 0.3c
 
 Fixed bug when navigating OUT of an empty directory and bug where share list was not being updated when a video is deleted
 
-version 0.3b
+Version 0.3b
 
 Added 1) share and directory listings show the number of videos and directories contained within them, and 2) added a "Please Wait" icon
 during length operations - currently this includes:  building a directory listing, pushing a video, and deleting a video.
 
-version 0.3a
+Version 0.3a
 
 Removed the clear key - it no longer exits the app. 
 Removed calls to unicode from metadata.py
 Added functionality to advance key - if pressed while at the end of a list, it will move to the start of the list.
 
-version 0.3
+Version 0.3
 
 Allow various sorting and display options:
 display=file - only display the file name
@@ -66,35 +73,33 @@ Again, if the specified meta data does not exist, a sort key will be built from 
 Also in version 0.3 - fixed the issue reported by reneg where shares on the second and subsequent pages of the shares listing were wrong
 
 
-version 0.2g 
+Version 0.2g 
 
 When deleting a video, if the meta file was in the .meta directory, it was not
 deleted.  Also, the jpg artwork file was not deleted either.  Both of these 
 have been fixed
 
-version 0.2f
+Version 0.2f
 
-Version 0.2f properly implements what 0.2e was supposed to do
+properly implements what 0.2e was supposed to do
 
-Change with 0.2e
+Version 0.2e
 
 Allow artwork to be placed in the .meta subdirectory
 
-version 0.2d
-
-Changes with 0.2d
+Version 0.2d
 
 Ignore directories beginning with . - this allows .meta directories for holding pytivo meta data
 
-Changes with 0.2c
+Version 0.2c
 
 Added descsize option to alter size of description font
 
-Changes with 0.2b
+Version 0.2b
 
 Added logic to metadata.py to strip non-ascii chars from meta data
 
-Changes with version 0.2
+Version 0.2
 
 Support HD resolution - this allows addition of screen capture/art work.  Also, tried to pay more
 attention to TV safe area - although this is hard for HD since the simulator doesn't support HD.

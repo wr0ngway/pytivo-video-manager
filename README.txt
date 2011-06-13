@@ -81,6 +81,13 @@ metaignore = isEpisode isEpisodic
    these two items determine which metadata is displayed first in the info screen and which is ignored. 
    Spelling and case are significant - the name must match exactly.  The default values are those
    values given above
+metaspace = name name
+   determines that there should be a blank line in the display AFTER the indicated metadata items.  The
+   default is an empty list so there will be no blank lines
+   
+infolabelpercent=30
+   specifies the width, in percentage of the label field on the info screen.  Default is 30, but I have found that 
+   20 works well for HD screens
 
 
 	c) You need to tell vidmgr about your Tivos.  For each tivo, you need to specify the name and
