@@ -82,8 +82,10 @@ metaignore = isEpisode isEpisodic
    Spelling and case are significant - the name must match exactly.  The default values are those
    values given above
 metaspace = name name
-   determines that there should be a blank line in the display AFTER the indicated metadata items.  The
-   default is an empty list so there will be no blank lines
+metaspaceafter = name name
+metaspacebefore = name name
+   determines that there should be a blank line in the display before or after the indicated metadata items.  The
+   default is an empty list so there will be no blank lines.  metaspace and metaspaceafter are synonyms
    
 infolabelpercent=30
    specifies the width, in percentage of the label field on the info screen.  Default is 30, but I have found that 
@@ -137,6 +139,10 @@ Usage
 Vidmgr presents a directory tree to you.  You can step into and out of directories using the normal
 tivo navigation keys.  The directory tree is rooted at the list of shares, unless there is only 1 share
 in which case it is rooted at the topmost directory of that share.
+
+while on a list of video files, you can also navigate using the number keys.  1 takes you 10% of the
+way through the list, 5 = 50%, 7 = 70%, etc.  0 alternately takes you to the end of the list and then to the
+beginning of the list
 
 In HD mode, vidmgr will also show video artwork on the right hand side of the screen.  Vidmgr looks for
 the following file:  <full-video-file-name-including-extension>.jpg or, if this doesn't exist, folder.jpg.

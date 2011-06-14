@@ -8,10 +8,11 @@ import urllib
 from string import maketrans
 
 TITLE = 'PyTivo Video Manager'
-version = '0.5b'
+version = '0.5c'
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 metaFirst = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
-metaSpace = []
+metaSpaceAfter = []
+metaSpaceBefore = []
 metaIgnore = [ 'isEpisode', 'isEpisodic' ]
 metaXlate = { 'title': 'Title',
 			'originalAirDate': 'Original Air Date',
@@ -43,6 +44,9 @@ metaXlate = { 'title': 'Title',
 			'vActor': 'Actor',
 			'vWriter': 'Writer',
 			}
+
+keymap = { KEY_NUM1: 10.0, KEY_NUM2: 20.0, KEY_NUM3: 30.0, KEY_NUM4: 40.0, KEY_NUM5: 50.0,
+		KEY_NUM6: 60.0, KEY_NUM7: 70.0, KEY_NUM8: 80.0, KEY_NUM9: 90.0 }
 
 infoLabelPercent = 30
 
@@ -163,7 +167,7 @@ class Vidmgr(Application):
 		return self.resolutions[0]
 	
 	def startup(self):
-		global goodexts, metaFirst, metaIgnore, metaSpace, infoLabelPercent
+		global goodexts, metaFirst, metaIgnore, metaSpaceBefore, metaSpaceAfter, infoLabelPercent
 		
 		config = self.context.server.config
 		self.descsize = 20
@@ -180,8 +184,10 @@ class Vidmgr(Application):
 					metaIgnore = value.split()
 				elif opt == 'metafirst':
 					metaFirst = value.split()
-				elif opt == 'metaspace':
-					metaSpace = value.split()
+				elif opt == 'metaspace' or opt == 'metaspaceafter':
+					metaSpaceAfter = value.split()
+				elif opt == 'metaspacebefore':
+					metaSpaceBefore = value.split()
 				elif opt == 'descsize':
 					self.descsize = int(value)
 				elif opt == 'infolabelpercent':
@@ -377,11 +383,19 @@ class Vidmgr(Application):
 					self.listSelection = 0;
 					self.listOffset = self.listOffset + self.listSize
 					
+			elif keynum in keymap:
+				pct = keymap[keynum]
+				print "paging directly to " + str(pct) + "% through the list"
+				self.listOffset = int(pct * len(self.listing) / 100.0)
+				self.listSelection = 0
+				print self.listOffset
+				print len(self.listing)
+					
 			elif keynum == KEY_REPLAY:
 				self.listSelection = 0
 				self.listOffset = 0
 				
-			elif keynum == KEY_ADVANCE:
+			elif keynum in [ KEY_ADVANCE, KEY_NUM0 ]:
 				if self.listOffset + self.listSelection >= len(self.listing) - 1:
 					self.listSelection = 0
 					self.listOffset = 0
@@ -497,7 +511,7 @@ class Vidmgr(Application):
 			self.shareSelection = 0
 			self.shareOffset = 0
 			
-		elif keynum == KEY_ADVANCE:
+		elif keynum in [ KEY_ADVANCE, KEY_NUM0 ]:
 			if self.shareOffset + self.shareSelection >= len(self.share) - 1:
 				self.shareSelection = 0
 				self.shareOffset = 0
@@ -1463,6 +1477,11 @@ class InfoView(View):
 		else:
 			dstring = data
 			
+		if label in metaSpaceBefore and not self.lastLineBlank:
+			self.labelContent.append("")
+			self.dataContent.append("")
+			self.lineCount = self.lineCount + 1
+
 		spacewidth = self.measure(" ")
 		newstring = ""
 		nslength = 0
@@ -1481,6 +1500,7 @@ class InfoView(View):
 				self.labelContent.append(lbl)
 				self.dataContent.append(newstring)
 				self.lineCount = self.lineCount + 1
+				self.lastLineBlank = False
 				newstring = w
 				nslength = wlen
 				lbl = ""
@@ -1488,11 +1508,13 @@ class InfoView(View):
 			self.labelContent.append(lbl)
 			self.dataContent.append(newstring)
 			self.lineCount = self.lineCount + 1
+			self.lastLineBlank = False
 			
-		if label in metaSpace:
+		if label in metaSpaceAfter:
 			self.labelContent.append("")
 			self.dataContent.append("")
 			self.lineCount = self.lineCount + 1
+			self.lastLineBlank = True
 		
 	def measure(self, string):
 		if len(string) == 0: return(0)
@@ -1508,6 +1530,7 @@ class InfoView(View):
 
 	def loadmetadata(self, meta):
 		self.clear()
+		self.lastLineBlank = True
 		if meta == None: return
 		
 		for m in metaFirst:

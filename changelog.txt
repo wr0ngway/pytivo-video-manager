@@ -1,6 +1,15 @@
 PyTivo Video Manager - change log
 
-*Version 0.5b 6/13/11
+Version 0.5c 6/13/11
+
+- added ability to jump a percentage of the way through long lisys by pressing digit keys - 5 = 50%, etc.
+0 key behaves like advance - alternates between taking you to end and to beginning.
+- expanded metaspace feature from 0.5b to have metaspacebefore and metaspaceafter.  If you add metadata items
+to these lists, they will have a blank line before/after them in the info display.  The logic will NOT
+display 2 blank lines in a row, nor will if display a blank on the first line of the display.
+
+
+Version 0.5b 6/13/11
 
 - extended the display of thumbnails for directories to include shares as well
 - added metaspace to the config file to indicate if a blank line should be added to the display after
