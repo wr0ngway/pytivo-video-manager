@@ -6,9 +6,13 @@ import metadata
 import ConfigParser
 import urllib
 from string import maketrans
+from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.5c'
+version = '0.5d'
+
+print TITLE + " version " + version + " starting"
+
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 metaFirst = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
 metaSpaceAfter = []
@@ -104,8 +108,13 @@ detailSubMenuXPos = [ 330, 340 ]
 detailSubCueTopY = [ 238, 410 ]
 detailSubCueBotY = [ 403, 575 ]
 detailSubCueXPos = [ 350, 300 ]
+ThumbNailWidth = 320
+ThumbNailHeight = 444
+ThumbCacheSize = 100
 
 p = os.path.dirname(__file__)
+tc = ThumbCache(p, ThumbCacheSize, ThumbNailWidth, ThumbNailHeight)
+
 if os.path.sep == '/':
 	quote = urllib.quote
 	unquote = urllib.unquote_plus
@@ -266,7 +275,6 @@ class Vidmgr(Application):
 		# attributes for shares screen
 		self.shareSelection = 0
 		self.shareOffset = 0
-		self.loadShareThumbs()
 		
 		# attributes for listing page
 		self.listSize = listSize[self.res]
@@ -385,11 +393,8 @@ class Vidmgr(Application):
 					
 			elif keynum in keymap:
 				pct = keymap[keynum]
-				print "paging directly to " + str(pct) + "% through the list"
 				self.listOffset = int(pct * len(self.listing) / 100.0)
 				self.listSelection = 0
-				print self.listOffset
-				print len(self.listing)
 					
 			elif keynum == KEY_REPLAY:
 				self.listSelection = 0
@@ -440,6 +445,7 @@ class Vidmgr(Application):
 					# no more level to pop out from - either bring up
 					# the shares page, or if there is only i share, exit
 					if len(self.share) == 1:
+						tc.saveCache()
 						self.active = False
 						snd = None
 					else:
@@ -540,6 +546,7 @@ class Vidmgr(Application):
 
 			
 		elif keynum == KEY_LEFT:
+			tc.saveCache()
 			self.active = False
 			snd = None
 				
@@ -883,21 +890,36 @@ class Vidmgr(Application):
 			self.vwDetailSubTitle.set_text("")
 			self.vwDetailDescription.set_text("")
 			if self.res == RES_HD:
-				if self.share[self.shareOffset+self.shareSelection]['thumb']:
+				sx = self.shareOffset + self.shareSelection
+				if 'thumb' not in self.share[sx]:
+					self.share[sx]['thumb'] = self.getDirThumb(self.share[sx]['path'])
+					
+				if self.share[sx]['thumb']:
 					self.vwDetailThumb.set_visible(True)
-					self.vwDetailThumb.set_resource(self.share[self.shareOffset+self.shareSelection]['thumb'], flags=RSRC_VALIGN_TOP)
+					self.vwDetailThumb.set_resource(self.share[sx]['thumb'], flags=RSRC_VALIGN_TOP)
 				else:
 					self.vwDetailThumb.set_visible(False)
-		elif len(self.listing) == 0 or self.listing[self.indexDetail]['dir']:
+					
+		elif len(self.listing) == 0:
+			self.vwDetailTitle.set_text("")
+			self.vwDetailSubTitle.set_text("")
+			self.vwDetailDescription.set_text("")
+			self.vwDetailThumb.set_visible(False)
+			
+		elif self.listing[self.indexDetail]['dir']:
 			self.vwDetailTitle.set_text("")
 			self.vwDetailSubTitle.set_text("")
 			self.vwDetailDescription.set_text("")
 			if self.res == RES_HD:
+				if 'thumb' not in self.listing[self.indexDetail]:
+					self.listing[self.indexDetail]['thumb'] = self.getDirThumb(self.listing[self.indexDetail]['fullpath'])
+					
 				if self.listing[self.indexDetail]['thumb']:
 					self.vwDetailThumb.set_visible(True)
 					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP)
 				else:
 					self.vwDetailThumb.set_visible(False)
+					
 		else:
 			meta = self.listing[self.indexDetail]['meta']
 			
@@ -913,6 +935,12 @@ class Vidmgr(Application):
 			else:
 				self.vwDetailTitle.set_text("")
 				self.vwDetailSubTitle.set_text("")
+				if 'thumb' not in self.listing[self.indexDetail]:
+					self.listing[self.indexDetail]['thumb'] = self.getThumb(
+							self.listing[self.indexDetail]['fullpath'],
+							self.listing[self.indexDetail]['fulldir'],
+							self.listing[self.indexDetail]['name'])
+
 				if self.listing[self.indexDetail]['thumb']:
 					self.vwDetailThumb.set_visible(True)
 					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP)
@@ -1026,7 +1054,7 @@ class Vidmgr(Application):
 		self.vwDetailSubMenuText = []
 		
 		if self.res == RES_HD:
-			self.vwDetailThumb = View(self, width=320, height=444, xpos=10, ypos=270, parent=self.vwDetail)
+			self.vwDetailThumb = View(self, width=ThumbNailWidth, height=ThumbNailHeight, xpos=10, ypos=270, parent=self.vwDetail)
 
 		startymenu = detailMenuYPos[self.res]
 		xmenu = detailMenuXPos[self.res]
@@ -1219,10 +1247,6 @@ class Vidmgr(Application):
 					path = pyconfig.get(section, 'path')
 					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
 				
-	def loadShareThumbs(self):
-		for share in self.share:
-			share['thumb'] = self.getDirThumb(share['path'])
-					
 	def updateShares(self):
 		for share in self.share:
 			path = share['path']
@@ -1307,11 +1331,10 @@ class Vidmgr(Application):
 			if os.path.isdir(fullpath):
 				if name.startswith('.'): continue
 				dispname = name + ' (' + str(self.countFiles(fullpath)) + ')'
-				thumb = self.getDirThumb(fullpath)
 				llist.append({'sorttext': name, 'disptext': dispname,
 								'icon': self.myimages.IconFolder, 
 								'path': relpath,
-								'thumb': thumb,
+								'fullpath': fullpath,
 								'dir': True})
 			else:
 				if os.path.splitext(name)[1].lower() in goodexts:
@@ -1321,14 +1344,14 @@ class Vidmgr(Application):
 						
 					(sorttext, disptext) = self.formatTitles(meta, name)
 	
-					thumb = self.getThumb(fullpath, fulldir, name, meta)
 					llist.append({'sorttext': sorttext,
 									'disptext': disptext,
 									'meta': meta,
+									'fullpath': fullpath,
+									'fulldir': fulldir,
 									'name': name,
 									'icon': self.myimages.IconVideo,
 									'path': relpath,
-									'thumb': thumb,
 									'dir': False})
 			
 		self.listing = sorted(llist, cmp=cmplist)
@@ -1389,7 +1412,7 @@ class Vidmgr(Application):
 		
 		return (sorttext, disptext)
 		
-	def getThumb(self, fn, dir, name, meta):
+	def getThumb(self, fn, dir, name):
 		if self.res == RES_SD:
 			return None
 		
@@ -1398,10 +1421,11 @@ class Vidmgr(Application):
 				os.path.join(dir, '.meta', name + '.jpg'),
 				os.path.join(dir, 'folder.jpg'),
 				os.path.join(dir, '.meta', 'folder.jpg') ]:
-			if os.path.exists(tfn):
-				thumb = Image(self, tfn)
+			data = tc.getImageData(tfn)
+			if data:
+				thumb = Image(self, tfn, data=data)
 				break
-		
+
 		return thumb
 	
 	def getDirThumb(self, fn):
@@ -1411,12 +1435,13 @@ class Vidmgr(Application):
 		thumb = None
 		for tfn in [ os.path.join(fn, 'folder.jpg'),
 				os.path.join(fn, '.meta', 'folder.jpg') ]:
-			if os.path.exists(tfn):
-				thumb = Image(self, tfn)
+			data = tc.getImageData(tfn)
+			if data:
+				thumb = Image(self, tfn, data=data)
 				break
-		
+			
 		return thumb
-
+	
 class InfoView(View):
 	def __init__(self, app, width, height, xpos, ypos, font):
 		View.__init__(self, app, width=width, height=height, xpos=xpos, ypos=ypos, visible=False)
@@ -1491,7 +1516,7 @@ class InfoView(View):
 				wslen = wlen + spacewidth
 			else:
 				wslen = wlen
-			if nslength + wslen < self.datawidth-5:
+			if nslength + wslen < self.datawidth-15:
 				if nslength != 0:
 					newstring = newstring + " "
 				newstring = newstring + w

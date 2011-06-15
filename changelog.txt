@@ -1,5 +1,17 @@
 PyTivo Video Manager - change log
 
+Version 0.5d 6/15/11
+- added logic to load thumbnails just in time rather that ahead of time.  This speeds up initial painting
+of a page, but slows down navigation within the page.  Beacuse of this, 
+- I added an image cache.  If you exit the app cleanly - by hitting left all the way out - the cache is saved to disk
+for future runs.  The cache got too big to save to disk with every change, so this was a compromise.  The cache uses lru
+logic to keep the last X used images in memory.   I had to choose some kind of limit here - I chose 100 for now - we'll
+see how that works out.  Also, the cache exists at the module level, but yet is accessed, and possible changed, at the
+HME thread level.  Because of this, I had to mutex exclusion around parts of the cache logic.
+- added logic to scale the thumbnail to fit in the 320 pixel wide view frame.  Thanks to wmcbrine for the picture
+sample hme app that told me how to do this.  Side effect of this - you need to have the python image lib (PIL) installed
+- widened the right hand margin on the info page a bit
+
 Version 0.5c 6/13/11
 
 - added ability to jump a percentage of the way through long lisys by pressing digit keys - 5 = 50%, etc.
