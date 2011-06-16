@@ -9,7 +9,7 @@ from string import maketrans
 from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.5d'
+version = '0.5e'
 
 print TITLE + " version " + version + " starting"
 

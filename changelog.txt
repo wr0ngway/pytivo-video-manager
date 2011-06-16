@@ -1,5 +1,8 @@
 PyTivo Video Manager - change log
 
+Version 0.5e 6/15/11
+- added a try block around PIL code i case jpg file cannot be processed
+
 Version 0.5d 6/15/11
 - added logic to load thumbnails just in time rather that ahead of time.  This speeds up initial painting
 of a page, but slows down navigation within the page.  Beacuse of this, 

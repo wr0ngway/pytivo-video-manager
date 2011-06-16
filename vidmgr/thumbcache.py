@@ -14,20 +14,23 @@ CACHEFILE = 'thumbs.cache'
 def resizePic(fn, width, height):
 		""" Re-encode the picture at self.count to fit the view. """
 
-		pic = img.open(fn)
-		pic.draft('RGB', (width, height))
-		if pic.mode == 'P':
-			pic = pic.convert()
-		filew, fileh = pic.size
-		# determine how the file width compares to the view width
-		ratio = float(width) / filew
-		# and scale the height accordingly
-		pheight = fileh * ratio
-		pic = pic.resize((int(width), int(pheight)), img.ANTIALIAS)
-		out = StringIO()
-		pic.save(out, 'JPEG')
-		encoded = out.getvalue()
-		out.close()
+		try:
+			pic = img.open(fn)
+			pic.draft('RGB', (width, height))
+			if pic.mode == 'P':
+				pic = pic.convert()
+			filew, fileh = pic.size
+			# determine how the file width compares to the view width
+			ratio = float(width) / filew
+			# and scale the height accordingly
+			pheight = fileh * ratio
+			pic = pic.resize((int(width), int(pheight)), img.ANTIALIAS)
+			out = StringIO()
+			pic.save(out, 'JPEG')
+			encoded = out.getvalue()
+			out.close()
+		except:
+			encoded = None
 		
 		return encoded
 	
@@ -86,11 +89,11 @@ class ThumbCache:
 			
 	def appendMap(self, key):		
 		self.lrumap.append([self.maxSize, key])
-	   
+
 	def addMap(self, key):
 		self.appendMap(key)
 		self.adjustMap()
-	   
+
 	def updateMap(self, key):
 		for m in self.lrumap:
 			if m[1] == key:
@@ -98,7 +101,7 @@ class ThumbCache:
 				break
 		self.sortMap()
 		self.adjustMap()
-		   
+
 	def getImageData(self, filename):
 		mt = 0
 		try:
@@ -108,7 +111,8 @@ class ThumbCache:
 			return None
 		
 		self.mutex.acquire()
-	   
+
+		adding = False
 		if filename in self.cache:
 			if self.cache[filename]['mtime'] >= mt:
 				# don't load the file - just use the cache
@@ -117,20 +121,30 @@ class ThumbCache:
 				return self.cache[filename]['data']
 			
 			# file is in the cache but out of date
-			self.updateMap(filename)
 		else:
 			# file is not in the cache - add it
-			self.cache[filename] = {}
-			self.addMap(filename)
+			adding = True
 			
 		# either file is newer than cache
 		# or file is NOT yet in the cache
 		# load it in either case
-		self.cache[filename]['data'] = resizePic(filename, self.width, self.height)
-		self.cache[filename]['mtime'] = mt
-	  
-		self.cacheChanged = True
+		pdata = resizePic(filename, self.width, self.height)
+		if pdata == None:
+			self.mutex.release();
+			return None
+
+		if adding:
+			self.cache[filename] = {}
 		
+		self.cache[filename]['data'] = pdata
+		self.cache[filename]['mtime'] = mt
+
+		self.cacheChanged = True
+		if adding:
+			self.addMap(filename)
+		else:
+			self.updateMap(filename)
+
 		self.mutex.release()
 		return self.cache[filename]['data']
 	
