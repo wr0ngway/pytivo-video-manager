@@ -9,7 +9,7 @@ from string import maketrans
 from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.5f'
+version = '0.6'
 
 print TITLE + " version " + version + " starting"
 
@@ -111,6 +111,7 @@ detailSubCueXPos = [ 350, 300 ]
 ThumbNailWidth = 620
 ThumbNailHeight = 450
 ThumbCacheSize = 100
+thumbFlag = RSRC_HALIGN_LEFT
 
 p = os.path.dirname(__file__)
 tc = ThumbCache(p, ThumbCacheSize)
@@ -176,7 +177,7 @@ class Vidmgr(Application):
 		return self.resolutions[0]
 	
 	def startup(self):
-		global goodexts, metaFirst, metaIgnore, metaSpaceBefore, metaSpaceAfter, infoLabelPercent
+		global goodexts, metaFirst, metaIgnore, metaSpaceBefore, metaSpaceAfter, infoLabelPercent, thumbFlag
 		
 		config = self.context.server.config
 		self.descsize = 20
@@ -210,6 +211,11 @@ class Vidmgr(Application):
 				elif opt == 'deleteallowed':
 					if value.lower() == "false":
 						self.deleteallowed = False
+				elif opt == 'thumbjustify':
+					if value.lower() == 'center':
+						thumbFlag = RSRC_HALIGN_CENTER
+					elif value.lower() == 'right':
+						thumbFlag = RSRC_HALIGN_RIGHT
 				elif opt == 'display':
 					if (value == 'episodetitle'):
 						self.dispopt = DISP_EPTITLE
@@ -896,7 +902,7 @@ class Vidmgr(Application):
 					
 				if self.share[sx]['thumb']:
 					self.vwDetailThumb.set_visible(True)
-					self.vwDetailThumb.set_resource(self.share[sx]['thumb'], flags=RSRC_VALIGN_TOP)
+					self.vwDetailThumb.set_resource(self.share[sx]['thumb'], flags=RSRC_VALIGN_TOP+thumbFlag)
 				else:
 					self.vwDetailThumb.set_visible(False)
 					
@@ -916,7 +922,7 @@ class Vidmgr(Application):
 					
 				if self.listing[self.indexDetail]['thumb']:
 					self.vwDetailThumb.set_visible(True)
-					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP)
+					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP+thumbFlag)
 				else:
 					self.vwDetailThumb.set_visible(False)
 					
@@ -943,7 +949,7 @@ class Vidmgr(Application):
 
 				if self.listing[self.indexDetail]['thumb']:
 					self.vwDetailThumb.set_visible(True)
-					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP)
+					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP+thumbFlag)
 				else:
 					self.vwDetailThumb.set_visible(False)
 					

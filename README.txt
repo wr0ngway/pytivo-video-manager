@@ -91,6 +91,9 @@ infolabelpercent=30
    specifies the width, in percentage of the label field on the info screen.  Default is 30, but I have found that 
    20 works well for HD screens
 
+thumbjustify=left
+   specifies how thumbnail images should be justified.  default = left, can be center or right
+
 
 	c) You need to tell vidmgr about your Tivos.  For each tivo, you need to specify the name and
 the TSN.  The format for this is:

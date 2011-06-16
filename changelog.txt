@@ -1,5 +1,8 @@
 PyTivo Video Manager - change log
 
+Version 0.6
+- added thumbjustify option to indicate if thumbnail images should be right or center justified.  default = left
+
 Version 0.5f 6/15/11
 - removed PIL code and image scaling - increased the size of the thumbnail view to 620x450.  Now submenu and
 tivomenu buttons can potentially appear over the thumbnail
