@@ -1,5 +1,9 @@
 PyTivo Video Manager - change log
 
+Version 0.5f 6/15/11
+- removed PIL code and image scaling - increased the size of the thumbnail view to 620x450.  Now submenu and
+tivomenu buttons can potentially appear over the thumbnail
+
 Version 0.5e 6/15/11
 - added a try block around PIL code i case jpg file cannot be processed
 

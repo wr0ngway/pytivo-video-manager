@@ -5,41 +5,27 @@ Created on Jun 14, 2011
 '''
 import cPickle as pickle
 import os
-import Image as img
-from cStringIO import StringIO
 import thread
 
 CACHEFILE = 'thumbs.cache'
 
-def resizePic(fn, width, height):
-		""" Re-encode the picture at self.count to fit the view. """
-
-		try:
-			pic = img.open(fn)
-			pic.draft('RGB', (width, height))
-			if pic.mode == 'P':
-				pic = pic.convert()
-			filew, fileh = pic.size
-			# determine how the file width compares to the view width
-			ratio = float(width) / filew
-			# and scale the height accordingly
-			pheight = fileh * ratio
-			pic = pic.resize((int(width), int(pheight)), img.ANTIALIAS)
-			out = StringIO()
-			pic.save(out, 'JPEG')
-			encoded = out.getvalue()
-			out.close()
-		except:
-			encoded = None
-		
-		return encoded
+def loadpic(fn):
+	try:
+		f = open(fn, "rb")
+		data = f.read()
+		f.close()
+	except:
+		return None
 	
+	if len(data) == 0:
+		return None
+	
+	return data
+
 class ThumbCache:
-	def __init__(self, dir, size, width, height):
+	def __init__(self, dir, size):
 		self.filename = os.path.join(dir, 'thumbs.cache')
 		self.cacheChanged = False
-		self.width = width
-		self.height = height
 		self.lrumap = []
 		self.maxSize = size
 		self.mutex = thread.allocate_lock()
@@ -128,7 +114,7 @@ class ThumbCache:
 		# either file is newer than cache
 		# or file is NOT yet in the cache
 		# load it in either case
-		pdata = resizePic(filename, self.width, self.height)
+		pdata = loadpic(filename)
 		if pdata == None:
 			self.mutex.release();
 			return None
