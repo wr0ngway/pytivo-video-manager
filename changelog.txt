@@ -1,5 +1,14 @@
 PyTivo Video Manager - change log
 
+Version 0.6a 6/17/11
+- put a try block around the stat operation in metadata.basic to catch broken links and other errors.  The action
+is to simply put an error message into the metadata description field
+- made use of the cleanup method as the correct place to save the cache
+- added support for folder/share metadata.  If a folder or share has a file named folder.txt (or .meta/folder.txt)
+then the contents will be read as metadata, and any description field that is found will be displayed on the screen
+above the thumbnail
+- added inforightmargin to configuration file - the number of pixels of right margin to leave on the info screen, default=20
+
 Version 0.6
 - added thumbjustify option to indicate if thumbnail images should be right or center justified.  default = left
 

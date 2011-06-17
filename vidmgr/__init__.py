@@ -9,7 +9,7 @@ from string import maketrans
 from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.6'
+version = '0.6a'
 
 print TITLE + " version " + version + " starting"
 
@@ -53,6 +53,7 @@ keymap = { KEY_NUM1: 10.0, KEY_NUM2: 20.0, KEY_NUM3: 30.0, KEY_NUM4: 40.0, KEY_N
 		KEY_NUM6: 60.0, KEY_NUM7: 70.0, KEY_NUM8: 80.0, KEY_NUM9: 90.0 }
 
 infoLabelPercent = 30
+infoRightMargin = 20
 
 
 PAGE_SHARES = 0
@@ -177,7 +178,8 @@ class Vidmgr(Application):
 		return self.resolutions[0]
 	
 	def startup(self):
-		global goodexts, metaFirst, metaIgnore, metaSpaceBefore, metaSpaceAfter, infoLabelPercent, thumbFlag
+		global goodexts, metaFirst, metaIgnore, metaSpaceBefore, metaSpaceAfter
+		global infoLabelPercent, infoRightMargin, thumbFlag
 		
 		config = self.context.server.config
 		self.descsize = 20
@@ -206,6 +208,12 @@ class Vidmgr(Application):
 						print "Error in config - infolabelpercent must be between 10 and 70"
 					else:
 						infoLabelPercent = n
+				elif opt == 'inforightmargin':
+					n = int(value)
+					if n < 0 or n > 100:
+						print "Error in config - inforightmargin must be between 0 and 100"
+					else:
+						infoRightMargin = n
 				elif opt == 'skin':
 					self.skin = value
 				elif opt == 'deleteallowed':
@@ -268,6 +276,9 @@ class Vidmgr(Application):
 			self.sound('bonk')
 			self.active = False
 			return
+		
+	def cleanup(self):
+		tc.saveCache()
 		
 	def handle_active(self):
 		# initialize our image and font resources, put up the screen background	and the title
@@ -451,7 +462,6 @@ class Vidmgr(Application):
 					# no more level to pop out from - either bring up
 					# the shares page, or if there is only i share, exit
 					if len(self.share) == 1:
-						tc.saveCache()
 						self.active = False
 						snd = None
 					else:
@@ -552,7 +562,6 @@ class Vidmgr(Application):
 
 			
 		elif keynum == KEY_LEFT:
-			tc.saveCache()
 			self.active = False
 			snd = None
 				
@@ -894,9 +903,17 @@ class Vidmgr(Application):
 		if self.currentPage == PAGE_SHARES:
 			self.vwDetailTitle.set_text("")
 			self.vwDetailSubTitle.set_text("")
-			self.vwDetailDescription.set_text("")
 			if self.res == RES_HD:
 				sx = self.shareOffset + self.shareSelection
+
+				meta = self.share[sx]['meta']
+				if 'description' in meta:
+					self.vwDetailDescription.set_text(meta['description'], font=self.myfonts.descfont,
+										colornum=0xffffff,
+										flags=RSRC_TEXT_WRAP + RSRC_HALIGN_LEFT + RSRC_VALIGN_TOP)
+				else:
+					self.vwDetailDescription.set_text("")
+				
 				if 'thumb' not in self.share[sx]:
 					self.share[sx]['thumb'] = self.getDirThumb(self.share[sx]['path'])
 					
@@ -905,6 +922,9 @@ class Vidmgr(Application):
 					self.vwDetailThumb.set_resource(self.share[sx]['thumb'], flags=RSRC_VALIGN_TOP+thumbFlag)
 				else:
 					self.vwDetailThumb.set_visible(False)
+			else:
+				self.vwDetailDescription.set_text("")
+
 					
 		elif len(self.listing) == 0:
 			self.vwDetailTitle.set_text("")
@@ -913,10 +933,18 @@ class Vidmgr(Application):
 			self.vwDetailThumb.set_visible(False)
 			
 		elif self.listing[self.indexDetail]['dir']:
+			meta = self.listing[self.indexDetail]['meta']
 			self.vwDetailTitle.set_text("")
 			self.vwDetailSubTitle.set_text("")
-			self.vwDetailDescription.set_text("")
+
 			if self.res == RES_HD:
+				if 'description' in meta:
+					self.vwDetailDescription.set_text(meta['description'], font=self.myfonts.descfont,
+										colornum=0xffffff,
+										flags=RSRC_TEXT_WRAP + RSRC_HALIGN_LEFT + RSRC_VALIGN_TOP)
+				else:
+					self.vwDetailDescription.set_text("")
+					
 				if 'thumb' not in self.listing[self.indexDetail]:
 					self.listing[self.indexDetail]['thumb'] = self.getDirThumb(self.listing[self.indexDetail]['fullpath'])
 					
@@ -925,6 +953,8 @@ class Vidmgr(Application):
 					self.vwDetailThumb.set_resource(self.listing[self.indexDetail]['thumb'], flags=RSRC_VALIGN_TOP+thumbFlag)
 				else:
 					self.vwDetailThumb.set_visible(False)
+			else:
+				self.vwDetailDescription.set_text("")
 					
 		else:
 			meta = self.listing[self.indexDetail]['meta']
@@ -1251,7 +1281,9 @@ class Vidmgr(Application):
 				if (pyconfig.has_option(section, "type") and pyconfig.get(section, "type") == "video" and 
 					pyconfig.has_option(section, 'path')):
 					path = pyconfig.get(section, 'path')
-					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep})
+					metaname = os.path.join(path, "folder")
+					meta = metadata.from_text(metaname)
+					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep, 'meta' : meta})
 				
 	def updateShares(self):
 		for share in self.share:
@@ -1336,9 +1368,12 @@ class Vidmgr(Application):
 			fullpath = os.path.join(fulldir, name)
 			if os.path.isdir(fullpath):
 				if name.startswith('.'): continue
+				metaname = os.path.join(fullpath, "folder")
+				meta = metadata.from_text(metaname)
 				dispname = name + ' (' + str(self.countFiles(fullpath)) + ')'
 				llist.append({'sorttext': name, 'disptext': dispname,
 								'icon': self.myimages.IconFolder, 
+								'meta': meta,
 								'path': relpath,
 								'fullpath': fullpath,
 								'dir': True})
@@ -1467,7 +1502,7 @@ class InfoView(View):
 		self.lineHeight = int(fontinfo.height)
 		self.linesPerPage = 0
 		lblwidth = int(self.width * infoLabelPercent / 100.0)
-		self.datawidth = int(self.width * (100.0-infoLabelPercent) / 100.0)
+		self.datawidth = int(self.width * (100.0-infoLabelPercent) / 100.0) - infoRightMargin
 		y = 10
 		while (y + self.lineHeight <= self.height - 2):
 			lbl = View(self.app, parent=self, width=lblwidth, height=self.lineHeight, xpos=10, ypos=y)
@@ -1522,7 +1557,7 @@ class InfoView(View):
 				wslen = wlen + spacewidth
 			else:
 				wslen = wlen
-			if nslength + wslen < self.datawidth-15:
+			if (nslength + wslen) < self.datawidth:
 				if nslength != 0:
 					newstring = newstring + " "
 				newstring = newstring + w

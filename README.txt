@@ -90,6 +90,9 @@ metaspacebefore = name name
 infolabelpercent=30
    specifies the width, in percentage of the label field on the info screen.  Default is 30, but I have found that 
    20 works well for HD screens
+   
+inforightmargin=20
+   specifies the width, in pixels of pad area on the right side of the info screen.  Default is 20. 0-100 allowed
 
 thumbjustify=left
    specifies how thumbnail images should be justified.  default = left, can be center or right
@@ -150,7 +153,9 @@ beginning of the list
 In HD mode, vidmgr will also show video artwork on the right hand side of the screen.  Vidmgr looks for
 the following file:  <full-video-file-name-including-extension>.jpg or, if this doesn't exist, folder.jpg.
 The view into which this graphic is placed is 320 pixels wide by 44 pixels high.  If your graphic exceeds
-those dimensions it will be cropped.
+those dimensions it will be cropped.  Folder.jpg will also be the thumbnail used for the enclosing folder
+or share.  Also, if there is a folder.txt file in a directory, or in the subtending .meta directory,
+its contents - notably the description field will be shown on the display above the thumbnail
 
 Once you choose a video file, you will be shown some of the metadata associated with that file,
 and then have two options - push or delete (delete can be disabled - see configuration above).  In
