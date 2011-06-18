@@ -1,5 +1,8 @@
 PyTivo Video Manager - change log
 
+Version 0.6b
+- added image scaling back in - but only for images that are too big for the view
+
 Version 0.6a 6/17/11
 - put a try block around the stat operation in metadata.basic to catch broken links and other errors.  The action
 is to simply put an error message into the metadata description field

@@ -9,7 +9,7 @@ from string import maketrans
 from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.6a'
+version = '0.6b'
 
 print TITLE + " version " + version + " starting"
 
@@ -115,7 +115,7 @@ ThumbCacheSize = 100
 thumbFlag = RSRC_HALIGN_LEFT
 
 p = os.path.dirname(__file__)
-tc = ThumbCache(p, ThumbCacheSize)
+tc = ThumbCache(p, ThumbCacheSize, ThumbNailWidth, ThumbNailHeight)
 
 if os.path.sep == '/':
 	quote = urllib.quote

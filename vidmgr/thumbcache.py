@@ -6,28 +6,50 @@ Created on Jun 14, 2011
 import cPickle as pickle
 import os
 import thread
+import Image as img
+from cStringIO import StringIO
 
 CACHEFILE = 'thumbs.cache'
 
-def loadpic(fn):
+def resizePic(fn, width, height):
 	try:
-		f = open(fn, "rb")
-		data = f.read()
-		f.close()
+		pic = img.open(fn)
 	except:
 		return None
 	
-	if len(data) == 0:
-		return None
-	
-	return data
+	pic.draft('RGB', (width, height))
+	if pic.mode == 'P':
+		pic = pic.convert()
+	filew, fileh = pic.size
 
+	if ((filew > width) or (fileh >height)):
+		# determine horizontal and vertical ratios of pic to view
+		ratiow = filew / float(width)
+		ratioh = fileh / float(height)
+		# choose the larger of the 2 ratios
+		ratio = ratiow
+		if ratioh > ratiow:
+			ratio = ratioh
+		# and scale accordingly
+		nheight = int(fileh / ratio)
+		nwidth = int(filew / ratio)
+		pic = pic.resize((nwidth, nheight), img.ANTIALIAS)
+		
+	out = StringIO()
+	pic.save(out, 'JPEG')
+	encoded = out.getvalue()
+	out.close()
+		
+	return encoded
+	
 class ThumbCache:
-	def __init__(self, dir, size):
+	def __init__(self, dir, size, vwidth, vheight):
 		self.filename = os.path.join(dir, 'thumbs.cache')
 		self.cacheChanged = False
 		self.lrumap = []
 		self.maxSize = size
+		self.width = vwidth
+		self.height = vheight
 		self.mutex = thread.allocate_lock()
 		
 		# try to load the cache file if it exists
@@ -114,7 +136,7 @@ class ThumbCache:
 		# either file is newer than cache
 		# or file is NOT yet in the cache
 		# load it in either case
-		pdata = loadpic(filename)
+		pdata = resizePic(filename, self.width, self.height)
 		if pdata == None:
 			self.mutex.release();
 			return None
