@@ -1,5 +1,8 @@
 PyTivo Video Manager - change log
 
+Version 0.7 - 7/11/2011
+- added support for dvdvideo pytivo shares/plugin.  See readme file for details
+
 Version 0.6b
 - added image scaling back in - but only for images that are too big for the view
 

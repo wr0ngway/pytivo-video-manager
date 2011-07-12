@@ -9,7 +9,7 @@ from string import maketrans
 from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.6b'
+version = '0.7'
 
 print TITLE + " version " + version + " starting"
 
@@ -55,6 +55,9 @@ keymap = { KEY_NUM1: 10.0, KEY_NUM2: 20.0, KEY_NUM3: 30.0, KEY_NUM4: 40.0, KEY_N
 infoLabelPercent = 30
 infoRightMargin = 20
 
+
+SHARE_VIDEO = 0
+SHARE_DVDVIDEO = 1
 
 PAGE_SHARES = 0
 PAGE_LIST = 1
@@ -133,6 +136,7 @@ class Images:
 		self.HiLite      = self.loadimage(app, 'hilite')
 		self.MenuBkg     = self.loadimage(app, 'menubkg')
 		self.IconFolder  = self.loadimage(app, 'folder')
+		self.IconDVD     = self.loadimage(app, 'dvdfolder')
 		self.IconVideo   = self.loadimage(app, 'video')
 		self.PleaseWait  = self.loadimage(app, 'pleasewait')
 		self.Info        = self.loadimage(app, 'info')
@@ -250,7 +254,7 @@ class Vidmgr(Application):
 		for i in [ RES_SD, RES_HD ]:
 			n = int(detailDescHeight[i]/self.descsize)
 			detailDescHeight[i] = n * self.descsize
-
+			
 		# get the tivo information out of the startup comfig file.  For each tivo, we need to know:
 		# tivox.name - the user friendly name and
 		# tivox.tsn - the TSN
@@ -284,12 +288,16 @@ class Vidmgr(Application):
 		# initialize our image and font resources, put up the screen background	and the title
 		self.myimages = Images(self)
 		self.myfonts = Fonts(self)
+		
+		self.addShareIcons()
+
 		self.root.set_resource(self.myimages.Background)
 		self.TitleView = View(self, height=30, width=screenWidth[self.res], ypos=titleYPos[self.res])
 		self.SubTitleView= View(self, height=20, width=screenWidth[self.res], ypos=subTitleYPos[self.res])
 		self.TitleView.set_text(TITLE, font=self.myfonts.fnt30, colornum=0xffffff, flags=RSRC_VALIGN_BOTTOM)
 		
 		# attributes for shares screen
+		self.sharetype = 0
 		self.shareSelection = 0
 		self.shareOffset = 0
 		
@@ -323,6 +331,7 @@ class Vidmgr(Application):
 		# if there is only 1 share - jump right to it - otherwise, put up a page of the shares
 		if len(self.share) == 1:
 			self.currentPage = PAGE_LIST
+			self.sharetype = self.share[0]['type']
 			self.createListing()		
 			self.drawScreen()
 		else:
@@ -354,14 +363,14 @@ class Vidmgr(Application):
 			# if they press the info button then we can turn on the info (metadata)
 			# display, but only if the current selection is NOT
 			# a directory AND the info display is not already up
-			if (keynum == KEY_INFO and not self.vwInfo.isVisible and not self.listing[index]['dir']):
+			if (keynum == KEY_INFO and not self.vwInfo.isVisible and self.listing[index]['hasinfo']):
 				meta = self.listing[index]['meta']
 				self.vwInfo.loadmetadata(meta)
 				self.vwInfo.show()
 				
 			# if the info display is up, clear the info
 			# display when the clear or left keys are hit
-			elif keynum in [ KEY_LEFT, KEY_CLEAR ] and self.vwInfo.isVisible:
+			elif keynum in [ KEY_LEFT, KEY_CLEAR, KEY_INFO ] and self.vwInfo.isVisible:
 				self.vwInfo.hide()
 				
 			# if the info display is up, allow paging
@@ -548,6 +557,8 @@ class Vidmgr(Application):
 		# jump into the chosen directory			
 		elif keynum in [KEY_SELECT, KEY_RIGHT]:
 			self.currentDir = ""
+			x = self.shareOffset + self.shareSelection
+			self.sharetype = self.share[x]['type']
 			self.listSelection = 0
 			self.listOffset = 0
 			self.vwPleaseWait.set_visible(True)
@@ -741,7 +752,7 @@ class Vidmgr(Application):
 				self.detailMode = MODE_INFO
 				
 			elif keynum in [KEY_UP, KEY_DOWN]:
-				if self.deleteallowed:
+				if self.deleteallowed and (self.sharetype == SHARE_VIDEO):
 					self.detailMenuSelection = 1 - self.detailMenuSelection
 				else:
 					snd = 'bonk'
@@ -866,7 +877,6 @@ class Vidmgr(Application):
 		for i in range(self.listSize):
 			self.vwListBkg[i].clear_resource()
 			self.vwListCue[i].clear_resource()
-			self.vwListIcon[i].clear_resource()
 			sx = i + off
 			if (sx < len(self.share)):
 				if i == self.shareSelection:
@@ -878,8 +888,10 @@ class Vidmgr(Application):
 					self.vwListCue[i].set_resource(self.myimages.CueDown)
 				self.vwListText[i].set_text(self.share[sx]['dispname'], font=self.myfonts.fnt24,
 									colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
+				self.vwListIcon[i].set_resource(self.share[sx]['icon'])
 			else:
 				self.vwListText[i].clear_resource()
+				self.vwListIcon[i].clear_resource()
 
 	# paint the detail screen
 	# this is the most detailed of all of the screens - in addition to the detail
@@ -995,22 +1007,29 @@ class Vidmgr(Application):
 		
 		if self.vwInfo.isVisible:
 			self.vwInfo.paint()
+			
+		if self.deleteallowed and (self.sharetype == SHARE_VIDEO):
+			deldim = 0.75
+			delbrite = 0
+		else:
+			deldim = 1
+			delbrite = 1
 		
 		if self.detailMode == MODE_MENU:			
 			for i in range(self.subMenuSize):
 				self.vwDetailSubMenuBkg[i].set_transparency(1) 
 			if self.detailMenuSelection == MENU_PUSH:
 				self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0)
-				self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
+				self.vwDetailMenuBkg[MENU_DELETE].set_transparency(deldim)
 				self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
 			else:
 				self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
-				self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0)
+				self.vwDetailMenuBkg[MENU_DELETE].set_transparency(delbrite)
 				self.vwDetailMenuBkg[MENU_CONFIRM].set_transparency(1)
 				
 		elif self.detailMode == MODE_DELCONFIRM:
 			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
-			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
+			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(deldim)
 			self.vwDetailMenuText[MENU_CONFIRM].set_text('Press Thumbs-Up to Confirm',
 									font=self.myfonts.fnt20,
 									colornum=0xffffff,
@@ -1021,7 +1040,7 @@ class Vidmgr(Application):
 			for i in range(self.subMenuSize):
 				self.vwDetailSubMenuBkg[i].set_transparency(1) 
 			self.vwDetailMenuBkg[MENU_PUSH].set_transparency(0.75)
-			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(0.75)
+			self.vwDetailMenuBkg[MENU_DELETE].set_transparency(deldim)
 			self.vwDetailMenuText[MENU_CONFIRM].set_text(self.pushText,
 									font=self.myfonts.fnt16,
 									colornum=0xffffff,
@@ -1128,13 +1147,9 @@ class Vidmgr(Application):
 		self.vwDetailMenuText[MENU_PUSH].set_text('Push Video', font=self.myfonts.fnt20,
 									colornum=0xffffff,
 									flags=RSRC_HALIGN_LEFT)
-		if self.deleteallowed:
-			self.vwDetailMenuText[MENU_DELETE].set_text('Delete Video', font=self.myfonts.fnt20,
+		self.vwDetailMenuText[MENU_DELETE].set_text('Delete Video', font=self.myfonts.fnt20,
 									colornum=0xffffff,
 									flags=RSRC_HALIGN_LEFT)
-		else:
-			self.vwDetailMenuText[MENU_DELETE].set_visible(False)
-			self.vwDetailMenuBkg[MENU_DELETE].set_visible(False)
 	
 	def ListCursorForward(self):
 		if self.listSelection+self.listOffset < len(self.listing)-1:
@@ -1283,13 +1298,43 @@ class Vidmgr(Application):
 					path = pyconfig.get(section, 'path')
 					metaname = os.path.join(path, "folder")
 					meta = metadata.from_text(metaname)
-					self.share.append({'name' : section, 'ip' : ip, 'port' : port, 'path' : path, 'sep' : sep, 'meta' : meta})
+					self.share.append({'name' : section,
+						'type' : SHARE_VIDEO,
+						'ip' : ip,
+						'port' : port,
+						'path' : path,
+						'sep' : sep,
+						'meta' : meta})
+				elif (pyconfig.has_option(section, "type") and pyconfig.get(section, "type") == "dvdvideo" and 
+					pyconfig.has_option(section, 'path')):
+					path = pyconfig.get(section, 'path')
+					metaname = os.path.join(path, "folder")
+					meta = metadata.from_text(metaname)
+					self.share.append({'name' : section,
+						'type' : SHARE_DVDVIDEO,
+						'ip' : ip,
+						'port' : port,
+						'path' : path,
+						'sep' : sep,
+						'meta' : meta})
+				
+	def addShareIcons(self):
+		for share in self.share:
+			if (share['type'] == SHARE_VIDEO):
+				share['icon'] = self.myimages.IconFolder
+			elif (share['type'] == SHARE_DVDVIDEO):
+				share['icon'] = self.myimages.IconDVD
 				
 	def updateShares(self):
 		for share in self.share:
-			path = share['path']
-			dispname = share['name'] + ' (' + str(self.countFiles(path)) + ')'
-			share['dispname'] = dispname
+			if (share['type'] == SHARE_VIDEO):
+				path = share['path']
+				dispname = share['name'] + ' (' + str(self.countFiles(path)) + ')'
+				share['dispname'] = dispname
+			elif (share['type'] == SHARE_DVDVIDEO):
+				path = share['path']
+				dispname = share['name'] + ' (' + str(self.countDirs(path)) + ')'
+				share['dispname'] = dispname
 			
 	# delete the video and it's associated metadata file		
 	def delVideo(self, index):
@@ -1360,6 +1405,16 @@ class Vidmgr(Application):
 		self.listing = []
 		llist = []
 
+		if (self.sharetype == SHARE_DVDVIDEO):
+			llist = self.createListingDVDVideo();
+		else:
+			llist = self.createListingVideo();
+
+		self.listing = sorted(llist, cmp=cmplist)
+
+	def createListingVideo(self):
+		llist = []
+
 		root = self.share[self.shareSelection+self.shareOffset]['path']
 		fulldir = os.path.join(root, self.currentDir)
 		names = os.listdir(fulldir)
@@ -1376,6 +1431,7 @@ class Vidmgr(Application):
 								'meta': meta,
 								'path': relpath,
 								'fullpath': fullpath,
+								'hasinfo': False,
 								'dir': True})
 			else:
 				if os.path.splitext(name)[1].lower() in goodexts:
@@ -1393,9 +1449,93 @@ class Vidmgr(Application):
 									'name': name,
 									'icon': self.myimages.IconVideo,
 									'path': relpath,
+									'hasinfo': True,
 									'dir': False})
+		return llist
+
+	def createListingDVDVideo(self):
+		llist = []
+
+		root = self.share[self.shareSelection+self.shareOffset]['path']
+		fulldir = os.path.join(root, self.currentDir)
+		if self.isDvdDir(fulldir):
+			path, deftitle = os.path.split(fulldir)
+			meta, names = self.loadDvdMeta(fulldir, "default", deftitle, False)
+			for (title, file) in names:
+				relpath = os.path.join(self.currentDir, file)
+				fullpath = os.path.join(fulldir, file)
+				meta, nm = self.loadDvdMeta(fulldir, file, title, True)
+				meta['title'] = title
+				llist.append({'sorttext': file, 'disptext': title,
+					'icon': self.myimages.IconVideo,
+					'meta': meta,
+					'path': relpath,
+					'name': file,
+					'fullpath': fullpath,
+					'fulldir': fulldir,
+					'hasinfo': True,
+					'dir': False})
+
+		else:
+			names = os.listdir(fulldir)
+			for name in names:
+				relpath = os.path.join(self.currentDir, name)
+				fullpath = os.path.join(fulldir, name)
+				if os.path.isdir(fullpath):
+					if name.startswith('.'): continue
+					if (self.isDvdDir(fullpath)):
+						meta, tnames = self.loadDvdMeta(fullpath, "default", name, False)
+						dispname = name + ' (' + str(len(tnames)) + ')'
+						llist.append({'sorttext': name, 'disptext': dispname,
+									'icon': self.myimages.IconDVD, 
+									'meta': meta,
+									'path': relpath,
+									'fullpath': fullpath,
+									'fulldir': fulldir,
+									'hasinfo': True,
+									'dir': True})
+					else:
+						metaname = os.path.join(fullpath, "folder")
+						meta = metadata.from_text(metaname)
+						dispname = name + ' (' + str(self.countFiles(fullpath)) + ')'
+						llist.append({'sorttext': name, 'disptext': dispname,
+									'icon': self.myimages.IconFolder, 
+									'meta': meta,
+									'path': relpath,
+									'fullpath': fullpath,
+									'fulldir': fulldir,
+									'hasinfo': False,
+									'dir': True})
 			
-		self.listing = sorted(llist, cmp=cmplist)
+		return llist
+
+	def isDvdDir(self, dir):
+		dvddir = os.path.join(dir, "VIDEO_TS")
+		return os.path.isdir(dvddir)
+
+	def loadDvdMeta(self, metadir, basefn, deftitle, deltitles):
+		metapath = os.path.join(metadir, basefn)
+		meta = metadata.from_text(metapath)
+		if (not 'title' in meta) or (meta['title'] == basefn):
+			meta['title'] = deftitle
+
+		makeKey = lambda x: "Title %d" % x
+		i = 0
+		titles = []
+		key = makeKey(i)
+		while (key in meta):
+				if not meta[key].lower().startswith("ignore"):
+					filename = "__T%02d.mpg" % i
+					titles.append((meta[key], filename))
+
+				if (deltitles):
+					del(meta[key])
+				i += 1
+				key = makeKey(i)
+		if len(titles) == 0:
+			titles.append((meta['title'], "__T00.mpg"))
+			
+		return (meta, titles)
 
 	def countFiles(self, dir):
 		tally = 0
@@ -1408,7 +1548,16 @@ class Vidmgr(Application):
 				if os.path.splitext(name)[1].lower() in goodexts:
 					tally = tally + 1
 		return(tally)
-		
+
+	def countDirs(self, dir):
+		tally = 0
+		names = os.listdir(dir)
+		for name in names:
+			fullpath = os.path.join(dir, name)
+			if os.path.isdir(fullpath):
+				if not name.startswith('.'): tally = tally + 1
+		return(tally)
+
 	def formatTitles(self, meta, filename):
 		if self.sortopt == SORT_FILE:
 			sorttext = filename
@@ -1603,7 +1752,9 @@ class InfoView(View):
 			if m in meta:
 				self.addline(m, meta[m])
 
-		for m in meta:
+		keys = meta.keys()
+		keys.sort()
+		for m in keys:
 			if m not in metaFirst and m not in metaIgnore:
 				self.addline(m, meta[m])
 		

@@ -11,6 +11,9 @@ can be made from your easy chair with your tivo remote.  Pushing allows videos t
 compatible MP4 format to be transferred as is - saving time and space - instead of the transcoding
 that a pull will always cause.  vidmgr can also be used to delete videos from your library.
 
+vidmgr was recently upgraded to support shares of type dvdvideo.  Deletion of these videos is not 
+supported.
+
 vidmgr is a TiVo HME application designed to operate under wmcbrine's hme for python
 framework.  It is NOT a stand-alone application.  Please install the pyhme package and make sure it
 is running before you install vidmgr.
@@ -155,7 +158,15 @@ the following file:  <full-video-file-name-including-extension>.jpg or, if this 
 The view into which this graphic is placed is 320 pixels wide by 44 pixels high.  If your graphic exceeds
 those dimensions it will be cropped.  Folder.jpg will also be the thumbnail used for the enclosing folder
 or share.  Also, if there is a folder.txt file in a directory, or in the subtending .meta directory,
-its contents - notably the description field will be shown on the display above the thumbnail
+its contents - notably the description field will be shown on the display above the thumbnail.
+
+For dvdvideo shares, vidmgr is totally dependent on accurate metadata.  Metadata (and thumbnails) all belong
+in the directory containing the VIDEO_TS directory or in a subtending .meta directory.  Metadata is processed
+as follows.  default.txt contains the DVD metadata.  __Txx.mpg.txt contains the metadata for title xx.  The
+title-specific metadata is overlaid on top of the DVD metadata, replacing any like-named items.  The thumbnail
+for the DVD is in a file named folder.jpg.  In addition, it is possible to have a thumbnail for a specific
+title;  the name should be __Txx.mpg.jpg.  If there is no metadata for a dvdvideo share, vidmgr assumes that
+there is only 1 title, and its title is the directory name.
 
 Once you choose a video file, you will be shown some of the metadata associated with that file,
 and then have two options - push or delete (delete can be disabled - see configuration above).  In
