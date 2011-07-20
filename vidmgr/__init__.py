@@ -9,9 +9,9 @@ from string import maketrans
 from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.7'
+version = '0.7a'
 
-print TITLE + " version " + version + " starting"
+print time.asctime(), TITLE + " version " + version + " starting"
 
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 metaFirst = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
@@ -154,7 +154,6 @@ class Images:
 			return Image(app, fn)
 		
 		print "image '" + name + "' missing for skin '" + app.skin + "'"
-		self.active = False
 		return None
 			
 
@@ -838,7 +837,8 @@ class Vidmgr(Application):
 			for i in range(self.listSize):
 				self.vwListBkg[i].clear_resource()
 				self.vwListCue[i].clear_resource()
-				if (i+off < len(self.listing)):
+				sx = i + off
+				if (sx < len(self.listing)):
 					if i == self.listSelection:
 						self.vwListBkg[i].set_resource(self.myimages.HiLite)
 						self.vwListCue[i].set_resource(self.myimages.CueLeft)
@@ -846,9 +846,12 @@ class Vidmgr(Application):
 						self.vwListCue[i].set_resource(self.myimages.CueUp)
 					if i == self.listSelection+1:
 						self.vwListCue[i].set_resource(self.myimages.CueDown)
-					self.vwListText[i].set_text(self.listing[i+off]['disptext'], font=self.myfonts.fnt24,
+					self.vwListText[i].set_text(self.listing[sx]['disptext'], font=self.myfonts.fnt24,
 										colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
-					self.vwListIcon[i].set_resource(self.listing[i+off]['icon'])
+					if self.listing[sx]['icon'] == None:
+						self.vwListIcon[i].clear_resource()
+					else:
+						self.vwListIcon[i].set_resource(self.listing[sx]['icon'])
 				else:
 					self.vwListText[i].clear_resource()
 					self.vwListIcon[i].clear_resource()
@@ -888,7 +891,10 @@ class Vidmgr(Application):
 					self.vwListCue[i].set_resource(self.myimages.CueDown)
 				self.vwListText[i].set_text(self.share[sx]['dispname'], font=self.myfonts.fnt24,
 									colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
-				self.vwListIcon[i].set_resource(self.share[sx]['icon'])
+				if self.listing[sx]['icon'] == None:
+					self.vwListIcon[i].clear_resource()
+				else:
+					self.vwListIcon[i].set_resource(self.share[sx]['icon'])
 			else:
 				self.vwListText[i].clear_resource()
 				self.vwListIcon[i].clear_resource()
@@ -1425,13 +1431,17 @@ class Vidmgr(Application):
 				if name.startswith('.'): continue
 				metaname = os.path.join(fullpath, "folder")
 				meta = metadata.from_text(metaname)
+				if len(meta) == 0:
+					hasinfo = False
+				else:
+					hasinfo = True
 				dispname = name + ' (' + str(self.countFiles(fullpath)) + ')'
 				llist.append({'sorttext': name, 'disptext': dispname,
 								'icon': self.myimages.IconFolder, 
 								'meta': meta,
 								'path': relpath,
 								'fullpath': fullpath,
-								'hasinfo': False,
+								'hasinfo': hasinfo,
 								'dir': True})
 			else:
 				if os.path.splitext(name)[1].lower() in goodexts:

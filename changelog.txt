@@ -1,5 +1,8 @@
 PyTivo Video Manager - change log
 
+Version 0.7a - 7/19/2011
+- allow pop-up information window to be displayed for folders if they have metadata.  ALso be more defensive if icons are missing
+
 Version 0.7 - 7/11/2011
 - added support for dvdvideo pytivo shares/plugin.  See readme file for details
 
