@@ -9,7 +9,7 @@ from string import maketrans
 from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.7a'
+version = '0.7b'
 
 print time.asctime(), TITLE + " version " + version + " starting"
 
@@ -891,7 +891,7 @@ class Vidmgr(Application):
 					self.vwListCue[i].set_resource(self.myimages.CueDown)
 				self.vwListText[i].set_text(self.share[sx]['dispname'], font=self.myfonts.fnt24,
 									colornum=0xffffff, flags=RSRC_HALIGN_LEFT)
-				if self.listing[sx]['icon'] == None:
+				if self.share[sx]['icon'] == None:
 					self.vwListIcon[i].clear_resource()
 				else:
 					self.vwListIcon[i].set_resource(self.share[sx]['icon'])
