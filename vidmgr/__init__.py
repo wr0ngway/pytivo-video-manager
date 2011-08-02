@@ -5,13 +5,14 @@ import socket
 import metadata
 import ConfigParser
 import urllib
+from time import asctime
 from string import maketrans
 from thumbcache import ThumbCache
 
 TITLE = 'PyTivo Video Manager'
-version = '0.7b'
+version = '0.7c'
 
-print time.asctime(), TITLE + " version " + version + " starting"
+print asctime(), TITLE + " version " + version + " starting"
 
 goodexts = ['.mp4', '.mpg', '.avi', '.wmv']
 metaFirst = [ 'title', 'seriesTitle', 'episodeTitle', 'description' ]
@@ -51,6 +52,8 @@ metaXlate = { 'title': 'Title',
 
 keymap = { KEY_NUM1: 10.0, KEY_NUM2: 20.0, KEY_NUM3: 30.0, KEY_NUM4: 40.0, KEY_NUM5: 50.0,
 		KEY_NUM6: 60.0, KEY_NUM7: 70.0, KEY_NUM8: 80.0, KEY_NUM9: 90.0 }
+
+regex = re.compile(r'Title\s*(\d+)')
 
 infoLabelPercent = 30
 infoRightMargin = 20
@@ -190,6 +193,8 @@ class Vidmgr(Application):
 		self.deleteallowed = True
 		self.dispopt = DISP_NORMAL
 		self.sortopt = SORT_NORMAL
+		self.mergefiles = True
+		self.mergelines = False
 		
 		if config.has_section('vidmgr'):
 			for opt, value in config.items('vidmgr'):
@@ -203,6 +208,12 @@ class Vidmgr(Application):
 					metaSpaceAfter = value.split()
 				elif opt == 'metaspacebefore':
 					metaSpaceBefore = value.split()
+				elif opt == 'metamergefiles':
+					if value.lower() == "false":
+						self.mergefiles = False
+				elif opt == 'metamergelines':
+					if value.lower() == "true":
+						self.mergelines = True
 				elif opt == 'descsize':
 					self.descsize = int(value)
 				elif opt == 'infolabelpercent':
@@ -1303,7 +1314,7 @@ class Vidmgr(Application):
 					pyconfig.has_option(section, 'path')):
 					path = pyconfig.get(section, 'path')
 					metaname = os.path.join(path, "folder")
-					meta = metadata.from_text(metaname)
+					meta = metadata.from_text(metaname, self.mergefiles, self.mergelines)
 					self.share.append({'name' : section,
 						'type' : SHARE_VIDEO,
 						'ip' : ip,
@@ -1315,7 +1326,7 @@ class Vidmgr(Application):
 					pyconfig.has_option(section, 'path')):
 					path = pyconfig.get(section, 'path')
 					metaname = os.path.join(path, "folder")
-					meta = metadata.from_text(metaname)
+					meta = metadata.from_text(metaname, self.mergefiles, self.mergelines)
 					self.share.append({'name' : section,
 						'type' : SHARE_DVDVIDEO,
 						'ip' : ip,
@@ -1430,7 +1441,7 @@ class Vidmgr(Application):
 			if os.path.isdir(fullpath):
 				if name.startswith('.'): continue
 				metaname = os.path.join(fullpath, "folder")
-				meta = metadata.from_text(metaname)
+				meta = metadata.from_text(metaname, self.mergefiles, self.mergelines)
 				if len(meta) == 0:
 					hasinfo = False
 				else:
@@ -1445,7 +1456,7 @@ class Vidmgr(Application):
 								'dir': True})
 			else:
 				if os.path.splitext(name)[1].lower() in goodexts:
-					meta = metadata.from_text(fullpath)
+					meta = metadata.from_text(fullpath, self.mergefiles, self.mergelines)
 					if not 'title' in meta:
 						meta = metadata.basic(fullpath)
 						
@@ -1506,7 +1517,7 @@ class Vidmgr(Application):
 									'dir': True})
 					else:
 						metaname = os.path.join(fullpath, "folder")
-						meta = metadata.from_text(metaname)
+						meta = metadata.from_text(metaname, self.mergefiles, self.mergelines)
 						dispname = name + ' (' + str(self.countFiles(fullpath)) + ')'
 						llist.append({'sorttext': name, 'disptext': dispname,
 									'icon': self.myimages.IconFolder, 
@@ -1523,25 +1534,25 @@ class Vidmgr(Application):
 		dvddir = os.path.join(dir, "VIDEO_TS")
 		return os.path.isdir(dvddir)
 
-	def loadDvdMeta(self, metadir, basefn, deftitle, deltitles):
+	def loadDvdMeta(self, metadir, basefn, deftitle, singleDVDtitle):
 		metapath = os.path.join(metadir, basefn)
-		meta = metadata.from_text(metapath)
+		meta = metadata.from_text(metapath, self.mergefiles, self.mergelines)
 		if (not 'title' in meta) or (meta['title'] == basefn):
 			meta['title'] = deftitle
 
-		makeKey = lambda x: "Title %d" % x
-		i = 0
 		titles = []
-		key = makeKey(i)
-		while (key in meta):
-				if not meta[key].lower().startswith("ignore"):
-					filename = "__T%02d.mpg" % i
-					titles.append((meta[key], filename))
+		kl = meta.keys()
+		for k in kl:
+			x = regex.search(k)
+			if x:
+				tn = int(x.group(1))
+				if not meta[k].lower().startswith("ignore"):
+					filename = "__T%02d.mpg" % tn
+					titles.append((meta[k], filename))
 
-				if (deltitles):
-					del(meta[key])
-				i += 1
-				key = makeKey(i)
+				if (singleDVDtitle):
+					del(meta[k])
+
 		if len(titles) == 0:
 			titles.append((meta['title'], "__T00.mpg"))
 			
@@ -1754,6 +1765,23 @@ class InfoView(View):
 		return int(width)
 
 	def loadmetadata(self, meta):
+		def cmpTitle(a, b):
+			xa = regex.search(a)
+			xb = regex.search(b)
+			if xa and xb:
+				return cmp(int(xa.group(1)), int(xb.group(1)))
+			else:
+				if a in metaXlate:
+					sa = metaXlate[a]
+				else:
+					sa = a
+				if b in metaXlate:
+					sb = metaXlate[b]
+				else:
+					sb = b
+
+				return cmp(sa, sb)
+
 		self.clear()
 		self.lastLineBlank = True
 		if meta == None: return
@@ -1762,9 +1790,8 @@ class InfoView(View):
 			if m in meta:
 				self.addline(m, meta[m])
 
-		keys = meta.keys()
-		keys.sort()
-		for m in keys:
+		skeys = sorted(meta.keys(), cmpTitle)
+		for m in skeys:
 			if m not in metaFirst and m not in metaIgnore:
 				self.addline(m, meta[m])
 		

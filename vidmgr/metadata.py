@@ -55,16 +55,20 @@ def _tag_value(element, tag):
 		name = item[0].firstChild.data
 		return name[0] + value[0]
 
-def from_text(full_path):
+def from_text(full_path, mergefiles=True, mergelines=False):
 	metadata = {}
 	path, name = os.path.split(full_path)
 	title, ext = os.path.splitext(name)
 
 	for metafile in [os.path.join(path, title) + '.properties',
-					 os.path.join(path, 'default.txt'), full_path + '.txt',
 					 os.path.join(path, '.meta', 'default.txt'),
-					 os.path.join(path, '.meta', name) + '.txt']:
+					 os.path.join(path, 'default.txt'),
+					 os.path.join(path, '.meta', name) + '.txt',
+					 full_path + '.txt']:
 		if os.path.exists(metafile):
+			if not mergefiles:
+				metadata = {}
+			prevkeys = metadata.keys()
 			sep = ':='[metafile.endswith('.properties')]
 			for line in file(metafile, 'U'):
 				if line.startswith(BOM):
@@ -81,7 +85,19 @@ def from_text(full_path):
 					else:
 						metadata[key] = [value]
 				else:
-					metadata[key] = value
+					if key in metadata:
+						if key in prevkeys and mergelines:
+							metadata[key] += ' ' + value
+							prevkeys.remove(key)
+						elif key in prevkeys:
+							metadata[key] = value
+							prevkeys.remove(key)
+						elif mergelines:
+							metadata[key] += ' ' + value
+						else:
+							metadata[key] = value
+					else:
+						metadata[key] = value
 
 	for rating, ratings in [('tvRating', TV_RATINGS),
 							('mpaaRating', MPAA_RATINGS),

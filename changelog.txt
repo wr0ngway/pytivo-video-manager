@@ -1,4 +1,9 @@
 PyTivo Video Manager - change log
+Version 0.7c - 8/2/2011
+- improved logic when looking for dvd titles - it does not stop on title gaps anymore
+- added options to control merging of metadata files: metamergefiles indicates if files should be merged, if files are 
+  to be merged, metamergelines indicates if lines in one file should be merged with or replace lines from previous files.
+
 Version 0.7b - 7/20/2011
 - bug fix from yesterday
 
