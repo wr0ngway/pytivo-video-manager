@@ -1650,7 +1650,9 @@ class Vidmgr(Application):
 			return None
 		
 		thumb = None
+		fn_noext, ext = os.path.splitext(fn)
 		for tfn in [ fn + '.jpg',
+				fn_noext + '-poster.jpg',
 				os.path.join(dir, '.meta', name + '.jpg'),
 				os.path.join(dir, 'folder.jpg'),
 				os.path.join(dir, '.meta', 'folder.jpg') ]:
@@ -1667,6 +1669,7 @@ class Vidmgr(Application):
 		
 		thumb = None
 		for tfn in [ os.path.join(fn, 'folder.jpg'),
+				os.path.join(fn, 'poster.jpg'),
 				os.path.join(fn, '.meta', 'folder.jpg') ]:
 			data = tc.getImageData(tfn)
 			if data:
