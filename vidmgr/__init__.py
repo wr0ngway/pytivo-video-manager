@@ -1,4 +1,6 @@
 from hme import *
+import imp
+import sys
 import os
 import re
 import socket
@@ -1339,22 +1341,29 @@ class Vidmgr(Application):
 
 	def setupMetadataImport(self, pytivo_directory):
 		if self.pytivo_metadata: return
-		import imp, sys
 		sys.path.append(pytivo_directory)
 		self.pytivo_metadata = imp.load_source('pytivo_metadata', os.path.join(pytivo_directory, 'metadata.py'))
 
 	def metadata_from_text(self, full_path):
-		if self.pytivo_metadata:
-			md = self.pytivo_metadata.from_text(full_path)
-		else:
-			md = metadata.from_text(self, full_path, self.mergefiles, self.mergelines)
+		try:
+			md = {}
+			if self.pytivo_metadata:
+				md = self.pytivo_metadata.from_text(full_path)
+			else:
+				md = metadata.from_text(self, full_path, self.mergefiles, self.mergelines)
+		except:
+			print "Failure while loading text metadata: ", sys.exc_info()[0]
 		return md
 
 	def metadata_basic(self, full_path):
-		if self.pytivo_metadata:
-			md = self.pytivo_metadata.basic(full_path)
-		else:
-			md = metadata.basic(full_path)
+		try:
+			md = {}
+			if self.pytivo_metadata:
+				md = self.pytivo_metadata.basic(full_path)
+			else:
+				md = metadata.basic(full_path)
+		except:
+			print "Failure while loading basic metadata: ", sys.exc_info()[0]
 		return md
 
 	def addShareIcons(self):
