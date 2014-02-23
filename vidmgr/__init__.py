@@ -195,7 +195,8 @@ class Vidmgr(Application):
 		self.sortopt = SORT_NORMAL
 		self.mergefiles = True
 		self.mergelines = False
-		
+		self.pytivo_metadata = None
+
 		if config.has_section('vidmgr'):
 			for opt, value in config.items('vidmgr'):
 				if opt == 'exts':
@@ -1290,9 +1291,10 @@ class Vidmgr(Application):
 				key = "pytivo" + str(i) + ".port"
 				if cfg.has_option(section, key):
 					port = cfg.get(section, key)
-				
+
+				self.setupMetadataImport(os.path.dirname(cfgfile))
 				self.parseCfgFile(cfgfile, ip, port, sep)
-		
+
 		self.share = sorted(self.share, cmp=cmpshare)
 
 	# parse a pytivo config looking for shares				
@@ -1314,7 +1316,7 @@ class Vidmgr(Application):
 					pyconfig.has_option(section, 'path')):
 					path = pyconfig.get(section, 'path')
 					metaname = os.path.join(path, "folder")
-					meta = metadata.from_text(metaname, self.mergefiles, self.mergelines)
+					meta = self.metadata_from_text(metaname)
 					self.share.append({'name' : section,
 						'type' : SHARE_VIDEO,
 						'ip' : ip,
@@ -1326,7 +1328,7 @@ class Vidmgr(Application):
 					pyconfig.has_option(section, 'path')):
 					path = pyconfig.get(section, 'path')
 					metaname = os.path.join(path, "folder")
-					meta = metadata.from_text(metaname, self.mergefiles, self.mergelines)
+					meta = self.metadata_from_text(metaname)
 					self.share.append({'name' : section,
 						'type' : SHARE_DVDVIDEO,
 						'ip' : ip,
@@ -1334,7 +1336,27 @@ class Vidmgr(Application):
 						'path' : path,
 						'sep' : sep,
 						'meta' : meta})
-				
+
+	def setupMetadataImport(self, pytivo_directory):
+		if self.pytivo_metadata: return
+		import imp, sys
+		sys.path.append(pytivo_directory)
+		self.pytivo_metadata = imp.load_source('pytivo_metadata', os.path.join(pytivo_directory, 'metadata.py'))
+
+	def metadata_from_text(self, full_path):
+		if self.pytivo_metadata:
+			md = self.pytivo_metadata.from_text(full_path)
+		else:
+			md = metadata.from_text(self, full_path, self.mergefiles, self.mergelines)
+		return md
+
+	def metadata_basic(self, full_path):
+		if self.pytivo_metadata:
+			md = self.pytivo_metadata.basic(full_path)
+		else:
+			md = metadata.basic(full_path)
+		return md
+
 	def addShareIcons(self):
 		for share in self.share:
 			if (share['type'] == SHARE_VIDEO):
@@ -1441,7 +1463,7 @@ class Vidmgr(Application):
 			if os.path.isdir(fullpath):
 				if name.startswith('.'): continue
 				metaname = os.path.join(fullpath, "folder")
-				meta = metadata.from_text(metaname, self.mergefiles, self.mergelines)
+				meta = self.metadata_from_text(metaname)
 				if len(meta) == 0:
 					hasinfo = False
 				else:
@@ -1456,9 +1478,9 @@ class Vidmgr(Application):
 								'dir': True})
 			else:
 				if os.path.splitext(name)[1].lower() in goodexts:
-					meta = metadata.from_text(fullpath, self.mergefiles, self.mergelines)
+					meta = self.metadata_from_text(fullpath)
 					if not 'title' in meta:
-						meta = metadata.basic(fullpath)
+						meta = self.metadata_basic(fullpath)
 						
 					(sorttext, disptext) = self.formatTitles(meta, name)
 	
@@ -1517,7 +1539,7 @@ class Vidmgr(Application):
 									'dir': True})
 					else:
 						metaname = os.path.join(fullpath, "folder")
-						meta = metadata.from_text(metaname, self.mergefiles, self.mergelines)
+						meta = self.metadata_from_text(metaname)
 						dispname = name + ' (' + str(self.countFiles(fullpath)) + ')'
 						llist.append({'sorttext': name, 'disptext': dispname,
 									'icon': self.myimages.IconFolder, 
@@ -1536,7 +1558,7 @@ class Vidmgr(Application):
 
 	def loadDvdMeta(self, metadir, basefn, deftitle, singleDVDtitle):
 		metapath = os.path.join(metadir, basefn)
-		meta = metadata.from_text(metapath, self.mergefiles, self.mergelines)
+		meta = self.metadata_from_text(metapath)
 		if (not 'title' in meta) or (meta['title'] == basefn):
 			meta['title'] = deftitle
 
@@ -1708,10 +1730,12 @@ class InfoView(View):
 		else:
 			lbl = label
 	
-		if type(data) is list:
+		if type(data) is str or type(data) is unicode:
+			dstring = data
+		elif type(data) is list:
 			dstring = ', '.join(data)
 		else:
-			dstring = data
+			dstring = str(data)
 			
 		if label in metaSpaceBefore and not self.lastLineBlank:
 			self.labelContent.append("")
